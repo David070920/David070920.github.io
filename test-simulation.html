@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simulation Modules Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 20px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        h1 {
+            color: #333;
+        }
+        .test-section {
+            background: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .test-results {
+            margin-top: 10px;
+            padding: 10px;
+            background: #f9f9f9;
+            border-radius: 4px;
+            font-family: monospace;
+            white-space: pre-wrap;
+        }
+        .success {
+            color: green;
+        }
+        .error {
+            color: red;
+        }
+        canvas {
+            border: 1px solid #ccc;
+            background: white;
+            display: block;
+            margin: 10px 0;
+        }
+        button {
+            padding: 10px 20px;
+            margin: 5px;
+            background: #2563eb;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #1e40af;
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body>
+    <h1>🎬 Simulation Modules Test</h1>
+    
+    <div class="test-section">
+        <h2>Test 1: Module Imports</h2>
+        <button onclick="testImports()">Run Test</button>
+        <div id="test1-results" class="test-results">Click "Run Test" to start...</div>
+    </div>
+    
+    <div class="test-section">
+        <h2>Test 2: Simulation Renderer</h2>
+        <canvas id="renderer-test-canvas" width="400" height="300"></canvas>
+        <button onclick="testRenderer()">Test Renderer</button>
+        <div id="test2-results" class="test-results">Click "Test Renderer" to draw shapes...</div>
+    </div>
+    
+    <div class="test-section">
+        <h2>Test 3: G-Code Simulator</h2>
+        <canvas id="simulator-test-canvas" width="400" height="300"></canvas>
+        <button onclick="testSimulator()">Test Simulator</button>
+        <div id="test3-results" class="test-results">Click "Test Simulator" to simulate G-code...</div>
+    </div>
+    
+    <div class="test-section">
+        <h2>Test 4: Preview Generator</h2>
+        <canvas id="preview-test-canvas" width="400" height="300"></canvas>
+        <button onclick="testPreviewGenerator()">Test Preview Generator</button>
+        <div id="test4-results" class="test-results">Click "Test Preview Generator"...</div>
+    </div>
+
+    <script type="module">
+        import { SimulationRenderer } from './js/simulation/simulationRenderer.js';
+        import { GCodeSimulator } from './js/simulation/gcodeSimulator.js';
+        import { AnimationController } from './js/simulation/animationController.js';
+        import { PreviewGenerator } from './js/simulation/previewGenerator.js';
+
+        // Make modules available globally for onclick handlers
+        window.SimulationRenderer = SimulationRenderer;
+        window.GCodeSimulator = GCodeSimulator;
+        window.AnimationController = AnimationController;
+        window.PreviewGenerator = PreviewGenerator;
+
+        window.testImports = function() {
+            const results = document.getElementById('test1-results');
+            let output = '';
+            
+            try {
+                output += '✅ SimulationRenderer imported\n';
+                output += '✅ GCodeSimulator imported\n';
+                output += '✅ AnimationController imported\n';
+                output += '✅ PreviewGenerator imported\n';
+                output += '\n🎉 All modules imported successfully!';
+                results.className = 'test-results success';
+            } catch (error) {
+                output += `❌ Import failed: ${error.message}`;
+                results.className = 'test-results error';
+            }
+            
+            results.textContent = output;
+        };
+
+        window.testRenderer = function() {
+            const results = document.getElementById('test2-results');
+            let output = '';
+            
+            try {
+                const canvas = document.getElementById('renderer-test-canvas');
+                const renderer = new SimulationRenderer(canvas);
+                
+                output += '✅ SimulationRenderer created\n';
+                
+                // Clear canvas
+                renderer.clear();
+                output += '✅ Canvas cleared\n';
+                
+                // Test circular nozzle
+                renderer.renderDot(100, 100, '#FF0000', 20, 'circular');
+                output += '✅ Circular dot rendered (red)\n';
+                
+                // Test flat nozzle
+                renderer.renderDot(200, 100, '#00FF00', 20, 'flat');
+                output += '✅ Flat dot rendered (green)\n';
+                
+                // Test line
+                renderer.renderLine(50, 150, 350, 150, '#0000FF', 10, 'circular');
+                output += '✅ Circular line rendered (blue)\n';
+                
+                // Test polyline
+                const points = [
+                    {x: 100, y: 200},
+                    {x: 150, y: 250},
+                    {x: 200, y: 200},
+                    {x: 250, y: 250},
+                    {x: 300, y: 200}
+                ];
+                renderer.renderPolyline(points, '#FF00FF', 8, 'circular');
+                output += '✅ Polyline rendered (magenta)\n';
+                
+                output += '\n🎉 SimulationRenderer tests passed!';
+                results.className = 'test-results success';
+            } catch (error) {
+                output += `\n❌ Test failed: ${error.message}`;
+                results.className = 'test-results error';
+            }
+            
+            results.textContent = output;
+        };
+
+        window.testSimulator = async function() {
+            const results = document.getElementById('test3-results');
+            let output = '';
+            
+            try {
+                const canvas = document.getElementById('simulator-test-canvas');
+                const renderer = new SimulationRenderer(canvas);
+                
+                // Create test configuration
+                const config = {
+                    anchors: {
+                        topLeft: { x: 0, y: 0 },
+                        topRight: { x: 2000, y: 0 },
+                        bottomCenter: { x: 1000, y: 1500 }
+                    },
+                    canvas: {
+                        width: 200,  // cm
+                        height: 150  // cm
+                    },
+                    image: {
+                        width: 400,
+                        height: 300
+                    },
+                    nozzleSize: 5,
+                    nozzleShape: 'circular'
+                };
+                
+                const simulator = new GCodeSimulator(renderer, config);
+                output += '✅ GCodeSimulator created\n';
+                
+                // Create test G-code
+                const testGCode = `
+; Test G-code
+G21 ; Set units to mm
+G90 ; Absolute positioning
+M117 COLOR: FF0000
+M106 ; Spray on
+G1 X500 Y500 Z1118.03
+G1 X800 Y500 Z1118.03
+G1 X800 Y800 Z1118.03
+G1 X500 Y800 Z1118.03
+G1 X500 Y500 Z1118.03
+M107 ; Spray off
+`;
+                
+                output += '✅ Test G-code created\n';
+                
+                // Simulate
+                await simulator.simulate(testGCode, 'instant');
+                output += '✅ G-code simulated\n';
+                
+                output += '\n🎉 GCodeSimulator tests passed!';
+                results.className = 'test-results success';
+            } catch (error) {
+                output += `\n❌ Test failed: ${error.message}\n${error.stack}`;
+                results.className = 'test-results error';
+            }
+            
+            results.textContent = output;
+        };
+
+        window.testPreviewGenerator = async function() {
+            const results = document.getElementById('test4-results');
+            let output = '';
+            
+            try {
+                const canvas = document.getElementById('preview-test-canvas');
+                const generator = new PreviewGenerator(canvas);
+                
+                output += '✅ PreviewGenerator created\n';
+                
+                // Create test color layers
+                const colorLayers = [
+                    {
+                        color: '#FF0000',
+                        paths: [
+                            [
+                                {x: 500, y: 500},
+                                {x: 1000, y: 500},
+                                {x: 1000, y: 1000},
+                                {x: 500, y: 1000},
+                                {x: 500, y: 500}
+                            ]
+                        ]
+                    },
+                    {
+                        color: '#0000FF',
+                        paths: [
+                            [
+                                {x: 700, y: 700},
+                                {x: 1200, y: 700},
+                                {x: 950, y: 1100}
+                            ]
+                        ]
+                    }
+                ];
+                
+                const config = {
+                    anchors: {
+                        topLeft: { x: 0, y: 0 },
+                        topRight: { x: 2000, y: 0 },
+                        bottomCenter: { x: 1000, y: 1500 }
+                    },
+                    canvas: {
+                        width: 200,
+                        height: 150
+                    },
+                    image: {
+                        width: 400,
+                        height: 300
+                    },
+                    nozzleSize: 5,
+                    nozzleShape: 'circular'
+                };
+                
+                await generator.generateInstantPreview(colorLayers, config);
+                output += '✅ Instant preview generated\n';
+                
+                output += '\n🎉 PreviewGenerator tests passed!';
+                results.className = 'test-results success';
+            } catch (error) {
+                output += `\n❌ Test failed: ${error.message}\n${error.stack}`;
+                results.className = 'test-results error';
+            }
+            
+            results.textContent = output;
+        };
+
+        // Auto-run first test
+        setTimeout(() => {
+            window.testImports();
+        }, 100);
+    </script>
+</body>
+</html>

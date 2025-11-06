@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Core Modules Test - MuralBot</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 20px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .test-section {
+            background: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .test-section h2 {
+            color: #2563eb;
+            margin-top: 0;
+        }
+        .success {
+            color: #059669;
+            font-weight: bold;
+        }
+        .error {
+            color: #dc2626;
+            font-weight: bold;
+        }
+        button {
+            background: #2563eb;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            margin: 5px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        button:hover {
+            background: #1e40af;
+        }
+        pre {
+            background: #1f2937;
+            color: #f3f4f6;
+            padding: 15px;
+            border-radius: 4px;
+            overflow-x: auto;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .test-result {
+            margin: 10px 0;
+            padding: 10px;
+            background: #f3f4f6;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🧪 MuralBot Core Modules Test Suite</h1>
+    
+    <div class="test-section">
+        <h2>1. Event Bus Module</h2>
+        <div id="eventbus-results"></div>
+        <button onclick="testEventBus()">Run Event Bus Tests</button>
+    </div>
+    
+    <div class="test-section">
+        <h2>2. Configuration Module</h2>
+        <div id="config-results"></div>
+        <button onclick="testConfig()">Run Config Tests</button>
+    </div>
+    
+    <div class="test-section">
+        <h2>3. State Management Module</h2>
+        <div id="state-results"></div>
+        <button onclick="testState()">Run State Tests</button>
+    </div>
+    
+    <div class="test-section">
+        <h2>4. Integration Test</h2>
+        <div id="integration-results"></div>
+        <button onclick="testIntegration()">Run Integration Test</button>
+    </div>
+    
+    <div class="test-section">
+        <h2>Console Output</h2>
+        <pre id="console-output"></pre>
+    </div>
+
+    <script type="module">
+        import eventBus, { Events } from './js/core/eventBus.js';
+        import state from './js/core/state.js';
+        import { getPresetList, applyPreset, validateValue, VALIDATION_RULES, DEFAULT_CONFIG } from './js/core/config.js';
+        
+        // Make modules available globally for test functions
+        window.eventBus = eventBus;
+        window.Events = Events;
+        window.state = state;
+        window.configModule = { getPresetList, applyPreset, validateValue, VALIDATION_RULES, DEFAULT_CONFIG };
+        
+        // Capture console output
+        const originalLog = console.log;
+        const consoleOutput = document.getElementById('console-output');
+        console.log = function(...args) {
+            originalLog.apply(console, args);
+            consoleOutput.textContent += args.join(' ') + '\n';
+            consoleOutput.scrollTop = consoleOutput.scrollHeight;
+        };
+        
+        console.log('✅ Core modules loaded successfully!');
+        console.log('Modules available:', { eventBus, state, Events });
+    </script>
+
+    <script>
+        function addResult(containerId, message, isSuccess = true) {
+            const container = document.getElementById(containerId);
+            const result = document.createElement('div');
+            result.className = 'test-result';
+            result.innerHTML = `<span class="${isSuccess ? 'success' : 'error'}">${isSuccess ? '✓' : '✗'}</span> ${message}`;
+            container.appendChild(result);
+        }
+        
+        function clearResults(containerId) {
+            document.getElementById(containerId).innerHTML = '';
+        }
+        
+        function testEventBus() {
+            clearResults('eventbus-results');
+            console.log('\n=== Testing Event Bus ===');
+            
+            try {
+                // Test 1: Subscribe and emit
+                let received = false;
+                const unsubscribe = window.eventBus.on(Events.STATE_CHANGED, (data) => {
+                    received = true;
+                    console.log('Event received:', data);
+                });
+                
+                window.eventBus.emit(Events.STATE_CHANGED, { test: 'data' });
+                addResult('eventbus-results', 'Subscribe and emit event', received);
+                
+                // Test 2: Unsubscribe
+                unsubscribe();
+                received = false;
+                window.eventBus.emit(Events.STATE_CHANGED, { test: 'data2' });
+                addResult('eventbus-results', 'Unsubscribe from event', !received);
+                
+                // Test 3: Once functionality
+                let onceCount = 0;
+                window.eventBus.once(Events.IMAGE_UPLOADED, () => {
+                    onceCount++;
+                });
+                window.eventBus.emit(Events.IMAGE_UPLOADED, {});
+                window.eventBus.emit(Events.IMAGE_UPLOADED, {});
+                addResult('eventbus-results', 'Once event (should fire only once)', onceCount === 1);
+                
+                // Test 4: Listener count
+                const count = window.eventBus.listenerCount(Events.STATE_CHANGED);
+                addResult('eventbus-results', `Listener count tracking (${count} listeners)`, true);
+                
+                console.log('Event Bus tests completed');
+            } catch (error) {
+                addResult('eventbus-results', `Error: ${error.message}`, false);
+                console.error('Event Bus test error:', error);
+            }
+        }
+        
+        function testConfig() {
+            clearResults('config-results');
+            console.log('\n=== Testing Configuration Module ===');
+            
+            try {
+                // Test 1: Default config exists
+                const hasDefaults = window.configModule.DEFAULT_CONFIG && 
+                                   window.configModule.DEFAULT_CONFIG.canvas &&
+                                   window.configModule.DEFAULT_CONFIG.robot;
+                addResult('config-results', 'Default configuration loaded', hasDefaults);
+                console.log('Default config:', window.configModule.DEFAULT_CONFIG);
+                
+                // Test 2: Preset list
+                const presets = window.configModule.getPresetList();
+                addResult('config-results', `Presets available (${presets.length} presets)`, presets.length > 0);
+                console.log('Available presets:', presets);
+                
+                // Test 3: Validation
+                const validResult = window.configModule.validateValue(200, { min: 50, max: 1000, type: 'number' });
+                addResult('config-results', 'Validation (valid value)', validResult.valid);
+                
+                const invalidResult = window.configModule.validateValue(2000, { min: 50, max: 1000, type: 'number' });
+                addResult('config-results', 'Validation (invalid value)', !invalidResult.valid);
+                
+                // Test 4: Apply preset
+                const baseConfig = { ...window.configModule.DEFAULT_CONFIG };
+                const withPreset = window.configModule.applyPreset(baseConfig, 'smallWall');
+                addResult('config-results', 'Apply preset configuration', withPreset !== null);
+                console.log('Preset applied:', withPreset);
+                
+                console.log('Configuration tests completed');
+            } catch (error) {
+                addResult('config-results', `Error: ${error.message}`, false);
+                console.error('Configuration test error:', error);
+            }
+        }
+        
+        function testState() {
+            clearResults('state-results');
+            console.log('\n=== Testing State Management ===');
+            
+            try {
+                // Test 1: Get state
+                const initialState = window.state.getState();
+                addResult('state-results', 'Get initial state', initialState !== null);
+                console.log('Initial state:', initialState);
+                
+                // Test 2: Get specific value
+                const canvasWidth = window.state.get('canvas.width');
+                addResult('state-results', `Get nested value (canvas.width = ${canvasWidth})`, canvasWidth !== undefined);
+                
+                // Test 3: Set value
+                const testValue = 250;
+                const setSuccess = window.state.set('canvas.width', testValue);
+                const newValue = window.state.get('canvas.width');
+                addResult('state-results', `Set value (${testValue} -> ${newValue})`, setSuccess && newValue === testValue);
+                
+                // Test 4: Validation
+                const invalidSet = window.state.set('canvas.width', 5000); // Too large
+                addResult('state-results', 'Validation prevents invalid value', !invalidSet);
+                
+                // Test 5: Subscribe to changes
+                let changeDetected = false;
+                const unsubscribe = window.state.subscribe('robot.moveSpeed', (value) => {
+                    changeDetected = true;
+                    console.log('State change detected:', value);
+                });
+                window.state.set('robot.moveSpeed', 4000);
+                addResult('state-results', 'Subscribe to state changes', changeDetected);
+                unsubscribe();
+                
+                // Test 6: Set multiple values
+                const multiSuccess = window.state.setMultiple({
+                    'paint.numColors': 5,
+                    'nozzle.size': 1.5
+                });
+                addResult('state-results', 'Set multiple values', multiSuccess);
+                
+                // Test 7: Reset state
+                window.state.reset('canvas');
+                const resetWidth = window.state.get('canvas.width');
+                addResult('state-results', `Reset section (canvas.width reset to ${resetWidth})`, resetWidth === 200);
+                
+                console.log('State Management tests completed');
+            } catch (error) {
+                addResult('state-results', `Error: ${error.message}`, false);
+                console.error('State Management test error:', error);
+            }
+        }
+        
+        function testIntegration() {
+            clearResults('integration-results');
+            console.log('\n=== Testing Integration ===');
+            
+            try {
+                // Test 1: State changes emit events
+                let eventFired = false;
+                const unsubscribe = window.eventBus.on(Events.CANVAS_SETTINGS_CHANGED, () => {
+                    eventFired = true;
+                });
+                window.state.set('canvas.height', 180);
+                addResult('integration-results', 'State change emits event', eventFired);
+                unsubscribe();
+                
+                // Test 2: Load preset and verify state
+                const presetState = window.configModule.applyPreset(window.state.getState(), 'largeWall');
+                window.state.loadState(presetState);
+                const newWidth = window.state.get('canvas.width');
+                addResult('integration-results', `Load preset updates state (width = ${newWidth}cm)`, newWidth === 300);
+                
+                // Test 3: Event chain
+                let chainComplete = false;
+                window.eventBus.on(Events.PAINT_SETTINGS_CHANGED, () => {
+                    chainComplete = true;
+                });
+                window.state.update('paint.pointillism', { dotDensity: 75 });
+                addResult('integration-results', 'Update triggers event chain', chainComplete);
+                
+                // Test 4: State history
+                const history = window.state.getHistory();
+                addResult('integration-results', `State history tracking (${history.length} entries)`, history.length > 0);
+                
+                // Test 5: Export/Import JSON
+                const exported = window.state.exportJSON();
+                const importSuccess = window.state.importJSON(exported);
+                addResult('integration-results', 'Export and import state as JSON', importSuccess);
+                
+                console.log('Integration tests completed');
+                console.log('\n✅ All tests finished! Check results above.');
+            } catch (error) {
+                addResult('integration-results', `Error: ${error.message}`, false);
+                console.error('Integration test error:', error);
+            }
+        }
+        
+        // Auto-run all tests on load
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                console.log('\n🚀 Running automated test suite...\n');
+                testEventBus();
+                setTimeout(() => testConfig(), 100);
+                setTimeout(() => testState(), 200);
+                setTimeout(() => testIntegration(), 300);
+            }, 500);
+        });
+    </script>
+</body>
+</html>

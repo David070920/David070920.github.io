@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="MuralBot G-Code Generator - Convert images to G-code for cable-driven wall-painting robots">
+    <title>MuralBot G-Code Generator</title>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="app-header">
+            <h1>🤖 MuralBot G-Code Generator</h1>
+            <p class="subtitle">Transform images into robot painting instructions</p>
+        </header>
+
+        <!-- Main Content Area -->
+        <main class="main-content">
+            <!-- Left Panel: Configuration -->
+            <aside class="panel panel-left">
+                <div class="panel-header">
+                    <h2>Configuration</h2>
+                </div>
+                <div class="panel-content">
+                    <!-- Tab Navigation -->
+                    <div class="tab-navigation">
+                        <button class="tab-btn active" data-tab="robot">Robot & Canvas</button>
+                        <button class="tab-btn" data-tab="paint">Paint & Color</button>
+                        <button class="tab-btn" data-tab="nozzle">Nozzle Template</button>
+                    </div>
+
+                    <!-- Tab 1: Robot & Canvas Setup -->
+                    <div class="tab-content active" id="tab-robot">
+                        <section class="config-section">
+                            <h3>Canvas Dimensions</h3>
+                            <div class="form-group">
+                                <label for="canvas-width">Width (cm)</label>
+                                <input type="number" id="canvas-width" value="200" min="50" max="1000" step="10">
+                            </div>
+                            <div class="form-group">
+                                <label for="canvas-height">Height (cm)</label>
+                                <input type="number" id="canvas-height" value="150" min="50" max="1000" step="10">
+                            </div>
+                        </section>
+
+                        <section class="config-section">
+                            <h3>Robot Settings</h3>
+                            <div class="form-group">
+                                <label for="paint-capacity">Paint Capacity (ml)</label>
+                                <input type="number" id="paint-capacity" value="50" min="10" max="500" step="5">
+                            </div>
+                            <div class="form-group">
+                                <label for="move-speed">Move Speed (mm/min)</label>
+                                <input type="number" id="move-speed" value="3000" min="500" max="10000" step="100">
+                            </div>
+                            <div class="form-group">
+                                <label>Refill Position</label>
+                                <button class="btn btn-secondary" id="set-refill-position">Set to Bottom-Left</button>
+                            </div>
+                        </section>
+
+                        <section class="config-section">
+                            <h3>Advanced Anchor Setup</h3>
+                            <details>
+                                <summary>Configure anchor points</summary>
+                                <div class="anchor-config">
+                                    <div class="form-group-inline">
+                                        <label>Anchor Top-Left</label>
+                                        <input type="number" id="anchor-tl-x" value="0" placeholder="X">
+                                        <input type="number" id="anchor-tl-y" value="0" placeholder="Y">
+                                    </div>
+                                    <div class="form-group-inline">
+                                        <label>Anchor Top-Right</label>
+                                        <input type="number" id="anchor-tr-x" value="2000" placeholder="X">
+                                        <input type="number" id="anchor-tr-y" value="0" placeholder="Y">
+                                    </div>
+                                    <div class="form-group-inline">
+                                        <label>Anchor Bottom-Center</label>
+                                        <input type="number" id="anchor-bc-x" value="1000" placeholder="X">
+                                        <input type="number" id="anchor-bc-y" value="3000" placeholder="Y">
+                                    </div>
+                                </div>
+                            </details>
+                        </section>
+                    </div>
+
+                    <!-- Tab 2: Paint & Color Settings -->
+                    <div class="tab-content" id="tab-paint">
+                        <section class="config-section">
+                            <h3>Color Configuration</h3>
+                            <div class="form-group">
+                                <label for="num-colors">Number of Colors</label>
+                                <input type="number" id="num-colors" value="3" min="1" max="10" step="1">
+                            </div>
+                            <div class="form-group">
+                                <label>Color Selection Mode</label>
+                                <div class="radio-group">
+                                    <label class="radio-label">
+                                        <input type="radio" name="color-mode" value="auto" checked>
+                                        <span>Auto-Pick Colors (K-Means)</span>
+                                    </label>
+                                    <label class="radio-label">
+                                        <input type="radio" name="color-mode" value="manual">
+                                        <span>Manual Color Entry</span>
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="form-group" id="manual-colors-container" style="display: none;">
+                                <label>Manual Colors</label>
+                                <div id="color-pickers">
+                                    <!-- Color pickers will be dynamically added here -->
+                                </div>
+                            </div>
+                        </section>
+
+                        <section class="config-section">
+                            <h3>Painting Mode</h3>
+                            <div class="form-group">
+                                <div class="radio-group">
+                                    <label class="radio-label">
+                                        <input type="radio" name="painting-mode" value="pointillism" checked>
+                                        <span>Pointillism Mode (Dots)</span>
+                                    </label>
+                                    <label class="radio-label">
+                                        <input type="radio" name="painting-mode" value="strokes">
+                                        <span>Strokes Mode (Lines)</span>
+                                    </label>
+                                    <label class="radio-label">
+                                        <input type="radio" name="painting-mode" value="spray">
+                                        <span>Spray Mode</span>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <!-- Dot Mode Settings -->
+                            <div class="mode-settings" id="dot-mode-settings">
+                                <div class="form-group">
+                                    <label for="dot-diameter">Spray Dot Diameter (mm)</label>
+                                    <input type="number" id="dot-diameter" value="5" min="1" max="50" step="0.5">
+                                </div>
+                            </div>
+
+                            <!-- Line Mode Settings -->
+                            <div class="mode-settings" id="line-mode-settings" style="display: none;">
+                                <div class="form-group">
+                                    <label for="line-thickness">Line Thickness (mm)</label>
+                                    <input type="number" id="line-thickness" value="3" min="1" max="50" step="0.5">
+                                </div>
+                            </div>
+
+                            <!-- Edge Mode Settings -->
+                            <div class="mode-settings" id="edge-mode-settings" style="display: none;">
+                                <div class="form-group">
+                                    <label for="edge-line-thickness">Line Thickness (mm)</label>
+                                    <input type="number" id="edge-line-thickness" value="3" min="1" max="50" step="0.5">
+                                </div>
+                                <div class="form-group">
+                                    <label for="threshold-low">Threshold Low</label>
+                                    <input type="range" id="threshold-low" min="0" max="255" value="50" step="1">
+                                    <span class="range-value" id="threshold-low-value">50</span>
+                                </div>
+                                <div class="form-group">
+                                    <label for="threshold-high">Threshold High</label>
+                                    <input type="range" id="threshold-high" min="0" max="255" value="150" step="1">
+                                    <span class="range-value" id="threshold-high-value">150</span>
+                                </div>
+                            </div>
+                        </section>
+                    </div>
+
+                    <!-- Tab 3: Nozzle Template -->
+                    <div class="tab-content" id="tab-nozzle">
+                        <section class="config-section">
+                            <h3>Nozzle Configuration</h3>
+                            <div class="form-group">
+                                <label>Nozzle Shape</label>
+                                <div class="radio-group">
+                                    <label class="radio-label">
+                                        <input type="radio" name="nozzle-shape" value="circular" checked>
+                                        <span>Circular</span>
+                                    </label>
+                                    <label class="radio-label">
+                                        <input type="radio" name="nozzle-shape" value="flat">
+                                        <span>Flat</span>
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label for="nozzle-size">Nozzle Size (mm)</label>
+                                <input type="number" id="nozzle-size" value="0.5" min="0.1" max="5" step="0.1">
+                                <p class="help-text">This overrides dot diameter and line thickness settings</p>
+                            </div>
+                        </section>
+
+                        <section class="config-section">
+                            <h3>Nozzle Preview</h3>
+                            <div class="nozzle-preview">
+                                <canvas id="nozzle-preview-canvas" width="200" height="200"></canvas>
+                            </div>
+                        </section>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="action-buttons">
+                        <button class="btn btn-primary" id="upload-image-btn">📁 Upload Image</button>
+                        <input type="file" id="image-upload" accept="image/png,image/jpeg,image/jpg" style="display: none;">
+                        <button class="btn btn-success" id="generate-gcode-btn" disabled>⚡ Generate G-Code</button>
+                    </div>
+                </div>
+            </aside>
+
+            <!-- Center Panel: Preview -->
+            <section class="panel panel-center">
+                <div class="panel-header">
+                    <h2>Preview</h2>
+                </div>
+                <div class="panel-content">
+                    <div class="canvas-container">
+                        <div class="canvas-section">
+                            <h3>Original Image</h3>
+                            <div class="canvas-wrapper">
+                                <canvas id="original-canvas"></canvas>
+                                <div class="canvas-placeholder">
+                                    <p>📷 No image uploaded</p>
+                                    <p class="small">Click "Upload Image" to get started</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="canvas-section">
+                            <h3>Simulation Preview</h3>
+                            <div class="canvas-wrapper">
+                                <canvas id="preview-canvas"></canvas>
+                                <div class="canvas-placeholder">
+                                    <p>🎨 No simulation yet</p>
+                                    <p class="small">Generate G-code to see preview</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="progress-container" id="progress-container" style="display: none;">
+                        <div class="progress-bar">
+                            <div class="progress-fill" id="progress-fill"></div>
+                        </div>
+                        <p class="progress-text" id="progress-text">Processing...</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Right Panel: Output -->
+            <aside class="panel panel-right">
+                <div class="panel-header">
+                    <h2>Output</h2>
+                </div>
+                <div class="panel-content">
+                    <section class="output-section">
+                        <h3>Job Summary</h3>
+                        <div class="summary-grid">
+                            <div class="summary-item">
+                                <span class="summary-label">⏱️ Estimated Time:</span>
+                                <span class="summary-value" id="estimated-time">--</span>
+                            </div>
+                            <div class="summary-item">
+                                <span class="summary-label">🎨 Paint Consumed:</span>
+                                <span class="summary-value" id="paint-consumed">--</span>
+                            </div>
+                            <div class="summary-item">
+                                <span class="summary-label">📏 Travel Distance:</span>
+                                <span class="summary-value" id="travel-distance">--</span>
+                            </div>
+                            <div class="summary-item">
+                                <span class="summary-label">🔄 Refills Needed:</span>
+                                <span class="summary-value" id="refills-needed">--</span>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="output-section">
+                        <h3>G-Code Output</h3>
+                        <textarea id="gcode-output" readonly placeholder="Generated G-code will appear here..."></textarea>
+                    </section>
+
+                    <div class="action-buttons">
+                        <button class="btn btn-primary" id="download-gcode-btn" disabled>💾 Download G-Code</button>
+                        <button class="btn btn-secondary" id="copy-gcode-btn" disabled>📋 Copy to Clipboard</button>
+                    </div>
+                </div>
+            </aside>
+        </main>
+
+        <!-- Footer -->
+        <footer class="app-footer">
+            <p>MuralBot G-Code Generator v1.0 | Ready for Phase 1 Implementation</p>
+        </footer>
+    </div>
+
+    <!-- Load JavaScript module -->
+    <script type="module" src="js/main.js"></script>
+</body>
+</html>

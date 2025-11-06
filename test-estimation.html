@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Estimation Modules Test - MuralBot</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        h1 {
+            color: #2563eb;
+            border-bottom: 3px solid #2563eb;
+            padding-bottom: 10px;
+        }
+        h2 {
+            color: #1e40af;
+            margin-top: 30px;
+        }
+        .test-section {
+            background: #f8fafc;
+            padding: 20px;
+            border-radius: 6px;
+            margin: 15px 0;
+            border-left: 4px solid #2563eb;
+        }
+        .result {
+            background: #f0f9ff;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 10px 0;
+            font-family: 'Courier New', monospace;
+            white-space: pre-wrap;
+        }
+        .success {
+            background: #d1fae5;
+            border-left: 4px solid #10b981;
+        }
+        .error {
+            background: #fee2e2;
+            border-left: 4px solid #ef4444;
+        }
+        button {
+            background: #2563eb;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            margin: 5px;
+        }
+        button:hover {
+            background: #1e40af;
+        }
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 15px 0;
+        }
+        .stat-card {
+            background: white;
+            padding: 15px;
+            border-radius: 6px;
+            border: 1px solid #e5e7eb;
+        }
+        .stat-label {
+            color: #6b7280;
+            font-size: 12px;
+            text-transform: uppercase;
+            margin-bottom: 5px;
+        }
+        .stat-value {
+            color: #111827;
+            font-size: 24px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 Estimation Modules Test Suite</h1>
+        <p>Testing job estimation calculations for the MuralBot G-Code Generator</p>
+        
+        <div class="test-section">
+            <h2>📏 Distance Calculator Tests</h2>
+            <button onclick="testDistanceCalculator()">Run Distance Tests</button>
+            <div id="distance-results" class="result"></div>
+        </div>
+        
+        <div class="test-section">
+            <h2>⏱️ Time Calculator Tests</h2>
+            <button onclick="testTimeCalculator()">Run Time Tests</button>
+            <div id="time-results" class="result"></div>
+        </div>
+        
+        <div class="test-section">
+            <h2>🎨 Paint Calculator Tests</h2>
+            <button onclick="testPaintCalculator()">Run Paint Tests</button>
+            <div id="paint-results" class="result"></div>
+        </div>
+        
+        <div class="test-section">
+            <h2>📊 Job Estimator Tests</h2>
+            <button onclick="testJobEstimator()">Run Job Estimator Tests</button>
+            <div id="estimator-results" class="result"></div>
+            
+            <h3>Sample G-Code Estimation</h3>
+            <button onclick="testGCodeEstimation()">Estimate Sample G-Code</button>
+            <div id="gcode-estimation" class="result"></div>
+            <div id="gcode-stats" class="stats"></div>
+        </div>
+        
+        <div class="test-section">
+            <h2>✅ All Tests</h2>
+            <button onclick="runAllTests()">Run All Tests</button>
+            <div id="all-results" class="result"></div>
+        </div>
+    </div>
+
+    <script type="module">
+        import * as distanceCalc from './js/estimation/distanceCalculator.js';
+        import * as timeCalc from './js/estimation/timeCalculator.js';
+        import * as paintCalc from './js/estimation/paintCalculator.js';
+        import { JobEstimator } from './js/estimation/jobEstimator.js';
+
+        // Make functions available globally for button clicks
+        window.distanceCalc = distanceCalc;
+        window.timeCalc = timeCalc;
+        window.paintCalc = paintCalc;
+        window.JobEstimator = JobEstimator;
+
+        window.testDistanceCalculator = function() {
+            const results = [];
+            
+            // Test 3D distance
+            const dist3D = distanceCalc.calculateMoveDistance(0, 0, 0, 100, 100, 100);
+            results.push(`✓ 3D Distance (0,0,0) to (100,100,100): ${dist3D.toFixed(2)} mm`);
+            
+            // Test 2D distance
+            const dist2D = distanceCalc.calculateCartesianDistance(0, 0, 100, 100);
+            results.push(`✓ 2D Distance (0,0) to (100,100): ${dist2D.toFixed(2)} mm`);
+            
+            // Test path length
+            const path = [
+                {X: 0, Y: 0, Z: 0},
+                {X: 100, Y: 0, Z: 0},
+                {X: 100, Y: 100, Z: 0}
+            ];
+            const pathLength = distanceCalc.calculatePathLength(path);
+            results.push(`✓ Path length (3 points): ${pathLength.toFixed(2)} mm`);
+            
+            // Test total distance with painting
+            const moves = [
+                {X: 0, Y: 0, Z: 0, painting: false},
+                {X: 100, Y: 0, Z: 0, painting: true},
+                {X: 100, Y: 100, Z: 0, painting: true}
+            ];
+            const distances = distanceCalc.calculateTotalDistance(moves);
+            results.push(`✓ Total distance: ${distances.total.toFixed(2)} mm`);
+            results.push(`  - Painting: ${distances.painting.toFixed(2)} mm`);
+            results.push(`  - Travel: ${distances.travel.toFixed(2)} mm`);
+            
+            // Test formatting
+            results.push(`✓ Format 500mm: ${distanceCalc.formatDistance(500)}`);
+            results.push(`✓ Format 1500mm: ${distanceCalc.formatDistance(1500)}`);
+            
+            document.getElementById('distance-results').textContent = results.join('\n');
+            document.getElementById('distance-results').className = 'result success';
+        };
+
+        window.testTimeCalculator = function() {
+            const results = [];
+            
+            // Test move time
+            const moveTime = timeCalc.calculateMoveTime(1000, 3000);
+            results.push(`✓ Move time (1000mm @ 3000mm/min): ${moveTime.toFixed(2)}s`);
+            
+            // Test spray time - dot
+            const dotTime = timeCalc.calculateSprayTime({type: 'dot', dwellTime: 0.1}, {});
+            results.push(`✓ Dot spray time: ${dotTime.toFixed(2)}s`);
+            
+            // Test spray time - line
+            const lineTime = timeCalc.calculateSprayTime({type: 'line', distance: 50, paintSpeed: 1500}, {});
+            results.push(`✓ Line spray time (50mm @ 1500mm/min): ${lineTime.toFixed(2)}s`);
+            
+            // Test time formatting
+            results.push(`✓ Format 45s: ${timeCalc.formatTime(45)}`);
+            results.push(`✓ Format 125s: ${timeCalc.formatTime(125)}`);
+            results.push(`✓ Format 3665s: ${timeCalc.formatTime(3665)}`);
+            
+            document.getElementById('time-results').textContent = results.join('\n');
+            document.getElementById('time-results').className = 'result success';
+        };
+
+        window.testPaintCalculator = function() {
+            const results = [];
+            
+            // Test dot paint
+            const dotPaint = paintCalc.calculateDotPaint(100, 5, 0.1);
+            results.push(`✓ Paint for 100 dots (5mm): ${dotPaint.toFixed(3)} ml`);
+            
+            // Test line paint
+            const linePaint = paintCalc.calculateLinePaint(500, 2, 0.1);
+            results.push(`✓ Paint for 500mm line (2mm width): ${linePaint.toFixed(3)} ml`);
+            
+            // Test refills
+            const refills = paintCalc.calculateRefills(125, 50);
+            results.push(`✓ Refills for 125ml (50ml capacity): ${refills.formatted}`);
+            
+            // Test formatting
+            results.push(`✓ Format 0.5ml: ${paintCalc.formatPaintVolume(0.5)}`);
+            results.push(`✓ Format 1250ml: ${paintCalc.formatPaintVolume(1250)}`);
+            
+            document.getElementById('paint-results').textContent = results.join('\n');
+            document.getElementById('paint-results').className = 'result success';
+        };
+
+        window.testJobEstimator = function() {
+            const results = [];
+            
+            const config = {
+                robot: {
+                    moveSpeed: 3000,
+                    paintSpeed: 1500,
+                    paintCapacity: 50
+                },
+                paint: {
+                    pointillism: {
+                        maxDotSize: 5
+                    }
+                }
+            };
+            
+            const estimator = new JobEstimator(config);
+            
+            // Test with simple moves
+            const moves = [
+                {X: 0, Y: 0, Z: 0, painting: false},
+                {X: 1000, Y: 0, Z: 0, painting: false},
+                {X: 1000, Y: 1000, Z: 0, painting: true},
+                {X: 0, Y: 1000, Z: 0, painting: true}
+            ];
+            
+            const time = estimator.calculateTime(moves, config);
+            results.push(`✓ Total time: ${time.total.toFixed(2)}s`);
+            results.push(`  - Travel: ${time.travel.toFixed(2)}s`);
+            results.push(`  - Painting: ${time.painting.toFixed(2)}s`);
+            
+            const paintingActions = [
+                {type: 'dot', dwellTime: 0.1},
+                {type: 'dot', dwellTime: 0.1},
+                {type: 'line', distance: 100}
+            ];
+            
+            const paint = estimator.calculatePaintConsumption(paintingActions, config);
+            results.push(`✓ Total paint: ${paint.total.toFixed(3)} ml`);
+            
+            const distance = estimator.calculateTravelDistance(moves);
+            results.push(`✓ Total distance: ${distance.total.toFixed(2)} mm`);
+            
+            document.getElementById('estimator-results').textContent = results.join('\n');
+            document.getElementById('estimator-results').className = 'result success';
+        };
+
+        window.testGCodeEstimation = function() {
+            const sampleGCode = `; MuralBot G-Code
+; Generated: 2024-01-01
+G21
+G90
+G28
+M5
+
+; === COLOR LAYER 1 ===
+G0 X1000.00 Y1500.00 Z800.00 F3000
+M3 S255
+G4 P0.1
+M5
+
+G0 X1100.00 Y1600.00 Z900.00 F3000
+M3 S255
+G1 X1200.00 Y1700.00 Z1000.00 F1500
+M5
+
+; === REFILL SEQUENCE ===
+G0 X-100.00 Y750.00 Z1500.00 F3000
+M6
+
+; === COLOR LAYER 2 ===
+G0 X1500.00 Y1500.00 Z800.00 F3000
+M3 S255
+G4 P0.15
+M5
+
+M5
+G28
+M84
+`;
+
+            const config = {
+                robot: {
+                    moveSpeed: 3000,
+                    paintSpeed: 1500,
+                    paintCapacity: 50
+                },
+                paint: {
+                    pointillism: {
+                        maxDotSize: 5
+                    }
+                }
+            };
+
+            const estimator = new JobEstimator(config);
+            
+            try {
+                const estimates = estimator.estimateFromGCode(sampleGCode);
+                
+                const results = [
+                    '✅ G-Code Estimation Complete',
+                    '',
+                    `Time: ${estimates.time.formatted}`,
+                    `  - Travel: ${estimates.time.travel.toFixed(2)}s`,
+                    `  - Painting: ${estimates.time.painting.toFixed(2)}s`,
+                    `  - Pauses: ${estimates.time.pauses.toFixed(2)}s`,
+                    `  - Color changes: ${estimates.time.colorChanges.toFixed(2)}s`,
+                    '',
+                    `Paint: ${estimates.paint.formatted}`,
+                    `Refills: ${estimates.paint.refills.formatted}`,
+                    '',
+                    `Distance: ${estimates.distance.formatted}`,
+                    `  - Painting: ${distanceCalc.formatDistance(estimates.distance.painting)}`,
+                    `  - Travel: ${distanceCalc.formatDistance(estimates.distance.travel)}`,
+                    '',
+                    `Stats:`,
+                    `  - Move commands: ${estimates.stats.moveCount}`,
+                    `  - Painting actions: ${estimates.stats.paintingActions}`,
+                    `  - Color changes: ${estimates.stats.colorChanges}`
+                ];
+                
+                document.getElementById('gcode-estimation').textContent = results.join('\n');
+                document.getElementById('gcode-estimation').className = 'result success';
+                
+                // Display stats cards
+                const statsHTML = `
+                    <div class="stat-card">
+                        <div class="stat-label">Estimated Time</div>
+                        <div class="stat-value">${estimates.time.formatted}</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Paint Consumed</div>
+                        <div class="stat-value">${estimates.paint.formatted}</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Travel Distance</div>
+                        <div class="stat-value">${estimates.distance.formatted}</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Refills Needed</div>
+                        <div class="stat-value">${estimates.paint.refills.formatted}</div>
+                    </div>
+                `;
+                document.getElementById('gcode-stats').innerHTML = statsHTML;
+                
+            } catch (error) {
+                document.getElementById('gcode-estimation').textContent = `❌ Error: ${error.message}`;
+                document.getElementById('gcode-estimation').className = 'result error';
+            }
+        };
+
+        window.runAllTests = function() {
+            const results = ['Running all tests...\n'];
+            
+            try {
+                testDistanceCalculator();
+                results.push('✅ Distance Calculator Tests: PASSED');
+            } catch (e) {
+                results.push(`❌ Distance Calculator Tests: FAILED - ${e.message}`);
+            }
+            
+            try {
+                testTimeCalculator();
+                results.push('✅ Time Calculator Tests: PASSED');
+            } catch (e) {
+                results.push(`❌ Time Calculator Tests: FAILED - ${e.message}`);
+            }
+            
+            try {
+                testPaintCalculator();
+                results.push('✅ Paint Calculator Tests: PASSED');
+            } catch (e) {
+                results.push(`❌ Paint Calculator Tests: FAILED - ${e.message}`);
+            }
+            
+            try {
+                testJobEstimator();
+                results.push('✅ Job Estimator Tests: PASSED');
+            } catch (e) {
+                results.push(`❌ Job Estimator Tests: FAILED - ${e.message}`);
+            }
+            
+            try {
+                testGCodeEstimation();
+                results.push('✅ G-Code Estimation Tests: PASSED');
+            } catch (e) {
+                results.push(`❌ G-Code Estimation Tests: FAILED - ${e.message}`);
+            }
+            
+            results.push('\n✅ All tests completed!');
+            
+            document.getElementById('all-results').textContent = results.join('\n');
+            document.getElementById('all-results').className = 'result success';
+        };
+
+        console.log('✅ Test page loaded successfully');
+        console.log('Click buttons to run tests');
+    </script>
+</body>
+</html>

@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>G-Code Modules Test - MuralBot</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        
+        .test-section {
+            background: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            color: #2563eb;
+        }
+        
+        h2 {
+            color: #1e40af;
+            border-bottom: 2px solid #2563eb;
+            padding-bottom: 10px;
+        }
+        
+        .test-result {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+        }
+        
+        .test-pass {
+            background: #d1fae5;
+            border-left: 4px solid #10b981;
+        }
+        
+        .test-fail {
+            background: #fee2e2;
+            border-left: 4px solid #ef4444;
+        }
+        
+        .gcode-output {
+            background: #1e293b;
+            color: #e2e8f0;
+            padding: 15px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            overflow-x: auto;
+            white-space: pre;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        button {
+            background: #2563eb;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            margin: 5px;
+        }
+        
+        button:hover {
+            background: #1e40af;
+        }
+        
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        
+        .stat-box {
+            background: #f0f9ff;
+            padding: 15px;
+            border-radius: 4px;
+            border-left: 4px solid #2563eb;
+        }
+        
+        .stat-label {
+            font-size: 12px;
+            color: #64748b;
+            text-transform: uppercase;
+        }
+        
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #1e293b;
+        }
+    </style>
+</head>
+<body>
+    <h1>🧪 G-Code Modules Test Suite</h1>
+    <p>Testing coordinate transformation and G-code generation modules</p>
+    
+    <div class="test-section">
+        <h2>1. Coordinate Transformation Tests</h2>
+        <button onclick="testCoordinateTransformation()">Run Transformation Tests</button>
+        <div id="transformation-results"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>2. G-Code Builder Tests</h2>
+        <button onclick="testGCodeBuilder()">Run Builder Tests</button>
+        <div id="builder-results"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>3. Refill Tracker Tests</h2>
+        <button onclick="testRefillTracker()">Run Tracker Tests</button>
+        <div id="tracker-results"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>4. G-Code Generator Test</h2>
+        <button onclick="testGCodeGenerator()">Generate Sample G-Code</button>
+        <div id="generator-stats" class="stats"></div>
+        <div id="generator-results"></div>
+    </div>
+
+    <script type="module">
+        import * as transformer from './js/gcode/coordinateTransformer.js';
+        import * as builder from './js/gcode/gcodeBuilder.js';
+        import { RefillTracker } from './js/gcode/refillTracker.js';
+        import gcodeGenerator from './js/gcode/gcodeGenerator.js';
+        
+        // Make modules available globally for button clicks
+        window.transformer = transformer;
+        window.builder = builder;
+        window.RefillTracker = RefillTracker;
+        window.gcodeGenerator = gcodeGenerator;
+        
+        window.testCoordinateTransformation = function() {
+            const results = document.getElementById('transformation-results');
+            results.innerHTML = '';
+            
+            const anchors = {
+                topLeft: { x: 0, y: 0 },
+                topRight: { x: 2000, y: 0 },
+                bottomCenter: { x: 1000, y: 1500 }
+            };
+            
+            // Test 1: Center point
+            try {
+                const coords = transformer.cartesianToTrilateration(1000, 750, anchors);
+                const pass = coords.X > 0 && coords.Y > 0 && coords.Z > 0;
+                results.innerHTML += `<div class="test-result ${pass ? 'test-pass' : 'test-fail'}">
+                    ✓ Center point (1000, 750): X=${coords.X}, Y=${coords.Y}, Z=${coords.Z}
+                </div>`;
+            } catch (e) {
+                results.innerHTML += `<div class="test-result test-fail">✗ Center point test failed: ${e.message}</div>`;
+            }
+            
+            // Test 2: Top-left corner
+            try {
+                const coords = transformer.cartesianToTrilateration(0, 0, anchors);
+                const pass = Math.abs(coords.X) < 0.1; // Should be near 0
+                results.innerHTML += `<div class="test-result ${pass ? 'test-pass' : 'test-fail'}">
+                    ${pass ? '✓' : '✗'} Top-left corner (0, 0): X=${coords.X}, Y=${coords.Y}, Z=${coords.Z}
+                </div>`;
+            } catch (e) {
+                results.innerHTML += `<div class="test-result test-fail">✗ Top-left test failed: ${e.message}</div>`;
+            }
+            
+            // Test 3: Round-trip transformation
+            try {
+                const original = { x: 500, y: 300 };
+                const trilateration = transformer.cartesianToTrilateration(original.x, original.y, anchors);
+                const cartesian = transformer.trilaterationToCartesian(trilateration.X, trilateration.Y, trilateration.Z, anchors);
+                const pass = cartesian && Math.abs(cartesian.x - original.x) < 1 && Math.abs(cartesian.y - original.y) < 1;
+                results.innerHTML += `<div class="test-result ${pass ? 'test-pass' : 'test-fail'}">
+                    ${pass ? '✓' : '✗'} Round-trip (500, 300): Original → Trilateration → ${cartesian ? `(${cartesian.x}, ${cartesian.y})` : 'null'}
+                </div>`;
+            } catch (e) {
+                results.innerHTML += `<div class="test-result test-fail">✗ Round-trip test failed: ${e.message}</div>`;
+            }
+            
+            // Test 4: Pixel to physical scaling
+            try {
+                const physical = transformer.scaleToPhysical(100, 100, 800, 600, 2000, 1500);
+                const pass = physical.x === 250 && physical.y === 250;
+                results.innerHTML += `<div class="test-result ${pass ? 'test-pass' : 'test-fail'}">
+                    ${pass ? '✓' : '✗'} Pixel scaling (100, 100): Physical=(${physical.x}, ${physical.y})mm
+                </div>`;
+            } catch (e) {
+                results.innerHTML += `<div class="test-result test-fail">✗ Scaling test failed: ${e.message}</div>`;
+            }
+        };
+        
+        window.testGCodeBuilder = function() {
+            const results = document.getElementById('builder-results');
+            results.innerHTML = '';
+            
+            // Test G-code commands
+            const tests = [
+                { name: 'G0 Command', fn: () => builder.G0(1000, 1500, 800, 3000), expected: 'G0 X1000.00 Y1500.00 Z800.00 F3000' },
+                { name: 'G1 Command', fn: () => builder.G1(1000, 1500, 800, 1500), expected: 'G1 X1000.00 Y1500.00 Z800.00 F1500' },
+                { name: 'M3 Command', fn: () => builder.M3(), expected: 'M3 S255' },
+                { name: 'M5 Command', fn: () => builder.M5(), expected: 'M5' },
+                { name: 'G4 Command', fn: () => builder.G4(2.5), expected: 'G4 P2.5' },
+                { name: 'Comment', fn: () => builder.comment('Test comment'), expected: '; Test comment' }
+            ];
+            
+            tests.forEach(test => {
+                try {
+                    const result = test.fn();
+                    const pass = result === test.expected;
+                    results.innerHTML += `<div class="test-result ${pass ? 'test-pass' : 'test-fail'}">
+                        ${pass ? '✓' : '✗'} ${test.name}: ${result}
+                    </div>`;
+                } catch (e) {
+                    results.innerHTML += `<div class="test-result test-fail">✗ ${test.name} failed: ${e.message}</div>`;
+                }
+            });
+        };
+        
+        window.testRefillTracker = function() {
+            const results = document.getElementById('tracker-results');
+            results.innerHTML = '';
+            
+            try {
+                const tracker = new RefillTracker();
+                tracker.reset(50); // 50ml capacity
+                
+                results.innerHTML += `<div class="test-result test-pass">
+                    ✓ Tracker initialized: ${tracker.getPaintCapacity()}ml capacity
+                </div>`;
+                
+                // Add some usage
+                tracker.addDotUsage(5, 0.1);
+                results.innerHTML += `<div class="test-result test-pass">
+                    ✓ Added 5mm dot: ${tracker.getRemainingCapacity().toFixed(2)}ml remaining
+                </div>`;
+                
+                // Test refill detection
+                for (let i = 0; i < 100; i++) {
+                    tracker.addDotUsage(5, 0.1);
+                }
+                
+                const needsRefill = tracker.needsRefill();
+                results.innerHTML += `<div class="test-result ${needsRefill ? 'test-pass' : 'test-fail'}">
+                    ${needsRefill ? '✓' : '✗'} Refill detection: ${needsRefill ? 'Correctly detected' : 'Not detected'}
+                </div>`;
+                
+                tracker.refill();
+                results.innerHTML += `<div class="test-result test-pass">
+                    ✓ Refill completed: ${tracker.getRefillCount()} refills, ${tracker.getRemainingCapacity().toFixed(2)}ml remaining
+                </div>`;
+                
+                const stats = tracker.getStatistics();
+                results.innerHTML += `<div class="test-result test-pass">
+                    ✓ Statistics: ${stats.consumed.toFixed(2)}ml consumed, ${stats.usageEvents} events
+                </div>`;
+                
+            } catch (e) {
+                results.innerHTML += `<div class="test-result test-fail">✗ Tracker test failed: ${e.message}</div>`;
+            }
+        };
+        
+        window.testGCodeGenerator = async function() {
+            const statsDiv = document.getElementById('generator-stats');
+            const results = document.getElementById('generator-results');
+            
+            statsDiv.innerHTML = '<p>Generating sample G-code...</p>';
+            results.innerHTML = '';
+            
+            try {
+                // Create sample configuration
+                const config = {
+                    canvas: {
+                        width: 200,
+                        height: 150,
+                        anchorTopLeft: { x: 0, y: 0 },
+                        anchorTopRight: { x: 200, y: 0 },
+                        anchorBottomLeft: { x: 0, y: 150 },
+                        anchorBottomRight: { x: 200, y: 150 }
+                    },
+                    robot: {
+                        refillPosition: { x: -10, y: 75 },
+                        paintCapacity: 50,
+                        moveSpeed: 3000,
+                        paintSpeed: 1500
+                    },
+                    paint: {
+                        paintingMode: 'pointillism',
+                        pointillism: {
+                            minDotSize: 2,
+                            maxDotSize: 5
+                        }
+                    },
+                    nozzle: {
+                        shape: 'circular',
+                        size: 0.5
+                    }
+                };
+                
+                // Create sample color layer
+                const colorLayers = [{
+                    color: { r: 255, g: 0, b: 0 },
+                    pixels: [
+                        { x: 100, y: 100 },
+                        { x: 150, y: 150 },
+                        { x: 200, y: 200 },
+                        { x: 250, y: 250 },
+                        { x: 300, y: 300 }
+                    ],
+                    pixelCount: 5,
+                    imageWidth: 400,
+                    imageHeight: 300
+                }];
+                
+                // Generate G-code
+                const gcode = await gcodeGenerator.generate(config, colorLayers, null);
+                
+                // Display statistics
+                const lines = gcode.split('\n');
+                const moveCommands = lines.filter(l => l.startsWith('G0') || l.startsWith('G1')).length;
+                const sprayCommands = lines.filter(l => l.startsWith('M3')).length;
+                
+                statsDiv.innerHTML = `
+                    <div class="stat-box">
+                        <div class="stat-label">Total Lines</div>
+                        <div class="stat-value">${lines.length}</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-label">Move Commands</div>
+                        <div class="stat-value">${moveCommands}</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-label">Spray Commands</div>
+                        <div class="stat-value">${sprayCommands}</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-label">Color Layers</div>
+                        <div class="stat-value">${colorLayers.length}</div>
+                    </div>
+                `;
+                
+                results.innerHTML = `<div class="gcode-output">${gcode}</div>`;
+                
+            } catch (e) {
+                statsDiv.innerHTML = '';
+                results.innerHTML = `<div class="test-result test-fail">✗ Generation failed: ${e.message}</div>`;
+                console.error(e);
+            }
+        };
+        
+        console.log('✅ G-Code test suite loaded');
+    </script>
+</body>
+</html>

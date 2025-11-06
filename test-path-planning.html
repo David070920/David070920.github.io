@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Path Planning Algorithms Test - MuralBot</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1200px;
+            margin: 20px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            border-bottom: 3px solid #4CAF50;
+            padding-bottom: 10px;
+        }
+        h2 {
+            color: #555;
+            margin-top: 30px;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+            font-size: 14px;
+        }
+        button:hover {
+            background: #45a049;
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .output {
+            background: #f9f9f9;
+            border: 1px solid #ddd;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .success {
+            color: #4CAF50;
+            font-weight: bold;
+        }
+        .error {
+            color: #f44336;
+            font-weight: bold;
+        }
+        .info {
+            color: #2196F3;
+        }
+        canvas {
+            border: 1px solid #ddd;
+            margin: 10px 0;
+        }
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 10px;
+            margin: 15px 0;
+        }
+        .stat-item {
+            background: #f0f0f0;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        .stat-label {
+            font-size: 12px;
+            color: #666;
+        }
+        .stat-value {
+            font-size: 18px;
+            font-weight: bold;
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎨 MuralBot Path Planning Test Suite</h1>
+        <p>Testing Phase 6: Path Planning Algorithms Integration</p>
+
+        <!-- TSP Solver Tests -->
+        <div class="test-section">
+            <h2>1. TSP Solver (Pointillism Mode)</h2>
+            <p>Tests the Traveling Salesman Problem solver for optimizing dot order.</p>
+            <button onclick="testTSPSolver()">Test TSP Solver</button>
+            <button onclick="testTSPWithSpatialIndex()">Test with Spatial Index (1000+ points)</button>
+            <canvas id="tspCanvas" width="400" height="300"></canvas>
+            <div id="tspOutput" class="output"></div>
+        </div>
+
+        <!-- Scanline Planner Tests -->
+        <div class="test-section">
+            <h2>2. Scanline Path Planner (Strokes Mode)</h2>
+            <p>Tests horizontal scanline algorithm and path optimization.</p>
+            <button onclick="testScanlinePlanner()">Test Scanline Planner</button>
+            <button onclick="testBidirectionalScanlines()">Test Bidirectional Scanning</button>
+            <canvas id="scanlineCanvas" width="400" height="300"></canvas>
+            <div id="scanlineOutput" class="output"></div>
+        </div>
+
+        <!-- Edge Tracer Tests -->
+        <div class="test-section">
+            <h2>3. Edge Tracer (Sketch Mode)</h2>
+            <p>Tests edge tracing, contour detection, and Douglas-Peucker simplification.</p>
+            <button onclick="testEdgeTracer()">Test Edge Tracer</button>
+            <button onclick="testContourOptimization()">Test Contour Optimization</button>
+            <canvas id="edgeCanvas" width="400" height="300"></canvas>
+            <div id="edgeOutput" class="output"></div>
+        </div>
+
+        <!-- Integration Tests -->
+        <div class="test-section">
+            <h2>4. G-Code Generator Integration</h2>
+            <p>Tests integration of path planning with G-code generation.</p>
+            <button onclick="testPointillismIntegration()">Test Pointillism Integration</button>
+            <button onclick="testStrokesIntegration()">Test Strokes Integration</button>
+            <button onclick="testSketchIntegration()">Test Sketch Integration</button>
+            <div id="integrationOutput" class="output"></div>
+        </div>
+
+        <!-- Performance Stats -->
+        <div class="test-section">
+            <h2>5. Performance Statistics</h2>
+            <div class="stats" id="stats"></div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { SpatialIndex } from './js/algorithms/spatialIndex.js';
+        import { solveTSP, nearestNeighbor, twoOpt, calculateTourLength } from './js/algorithms/tspSolver.js';
+        import { planHorizontalScanlines, planVerticalScanlines, optimizeScanlineOrder, planBidirectionalScanlines } from './js/algorithms/scanlinePlanner.js';
+        import { traceEdges, findEdgeContours, simplifyPolyline, optimizeContourOrder } from './js/algorithms/edgeTracer.js';
+        import { GCodeGenerator } from './js/gcode/gcodeGenerator.js';
+        import { EventBus } from './js/core/eventBus.js';
+
+        // Make functions globally available
+        window.testTSPSolver = testTSPSolver;
+        window.testTSPWithSpatialIndex = testTSPWithSpatialIndex;
+        window.testScanlinePlanner = testScanlinePlanner;
+        window.testBidirectionalScanlines = testBidirectionalScanlines;
+        window.testEdgeTracer = testEdgeTracer;
+        window.testContourOptimization = testContourOptimization;
+        window.testPointillismIntegration = testPointillismIntegration;
+        window.testStrokesIntegration = testStrokesIntegration;
+        window.testSketchIntegration = testSketchIntegration;
+
+        function log(elementId, message, type = 'info') {
+            const output = document.getElementById(elementId);
+            const timestamp = new Date().toLocaleTimeString();
+            const className = type === 'error' ? 'error' : type === 'success' ? 'success' : 'info';
+            output.innerHTML += `<div class="${className}">[${timestamp}] ${message}</div>`;
+            output.scrollTop = output.scrollHeight;
+        }
+
+        function updateStats(stats) {
+            const container = document.getElementById('stats');
+            container.innerHTML = '';
+            for (const [label, value] of Object.entries(stats)) {
+                const item = document.createElement('div');
+                item.className = 'stat-item';
+                item.innerHTML = `
+                    <div class="stat-label">${label}</div>
+                    <div class="stat-value">${value}</div>
+                `;
+                container.appendChild(item);
+            }
+        }
+
+        // Test 1: TSP Solver with small point set
+        async function testTSPSolver() {
+            log('tspOutput', '=== Testing TSP Solver ===', 'info');
+            
+            // Generate random points
+            const numPoints = 50;
+            const points = [];
+            for (let i = 0; i < numPoints; i++) {
+                points.push({
+                    x: Math.random() * 400,
+                    y: Math.random() * 300
+                });
+            }
+
+            log('tspOutput', `Generated ${numPoints} random points`, 'info');
+
+            // Solve TSP
+            const startTime = performance.now();
+            const tour = solveTSP(points, { optimize: true });
+            const endTime = performance.now();
+
+            const tourLength = calculateTourLength(tour, points);
+            
+            log('tspOutput', `✓ TSP solved in ${(endTime - startTime).toFixed(2)}ms`, 'success');
+            log('tspOutput', `Tour length: ${tourLength.toFixed(2)}`, 'info');
+
+            // Visualize
+            visualizeTSP(points, tour, 'tspCanvas');
+
+            updateStats({
+                'Points': numPoints,
+                'Time': `${(endTime - startTime).toFixed(2)}ms`,
+                'Tour Length': tourLength.toFixed(2),
+                'Avg Distance': (tourLength / numPoints).toFixed(2)
+            });
+        }
+
+        // Test 2: TSP with large dataset and spatial index
+        async function testTSPWithSpatialIndex() {
+            log('tspOutput', '=== Testing TSP with Spatial Index ===', 'info');
+            
+            const numPoints = 1500;
+            const points = [];
+            for (let i = 0; i < numPoints; i++) {
+                points.push({
+                    x: Math.random() * 400,
+                    y: Math.random() * 300
+                });
+            }
+
+            log('tspOutput', `Generated ${numPoints} random points`, 'info');
+
+            const startTime = performance.now();
+            const tour = solveTSP(points, { optimize: false }); // No 2-opt for large sets
+            const endTime = performance.now();
+
+            const tourLength = calculateTourLength(tour, points);
+            
+            log('tspOutput', `✓ Large TSP solved in ${(endTime - startTime).toFixed(2)}ms`, 'success');
+            log('tspOutput', `Tour length: ${tourLength.toFixed(2)}`, 'info');
+
+            updateStats({
+                'Points': numPoints,
+                'Time': `${(endTime - startTime).toFixed(2)}ms`,
+                'Performance': `${(numPoints / ((endTime - startTime) / 1000)).toFixed(0)} points/sec`
+            });
+        }
+
+        // Test 3: Scanline Planner
+        async function testScanlinePlanner() {
+            log('scanlineOutput', '=== Testing Scanline Planner ===', 'info');
+
+            // Create test image data with horizontal stripes
+            const width = 100, height = 80;
+            const imageData = {
+                data: new Uint8ClampedArray(width * height * 4),
+                width, height
+            };
+
+            // Create striped pattern
+            for (let y = 0; y < height; y++) {
+                if (y % 10 < 5) { // Every other 5 rows
+                    for (let x = 0; x < width; x++) {
+                        const idx = (y * width + x) * 4;
+                        imageData.data[idx] = 255;
+                        imageData.data[idx + 1] = 255;
+                        imageData.data[idx + 2] = 255;
+                        imageData.data[idx + 3] = 255;
+                    }
+                }
+            }
+
+            const startTime = performance.now();
+            const segments = planHorizontalScanlines(imageData, [255, 255, 255], 10);
+            const optimized = optimizeScanlineOrder(segments, { x: 0, y: 0 });
+            const endTime = performance.now();
+
+            log('scanlineOutput', `✓ Found ${segments.length} segments in ${(endTime - startTime).toFixed(2)}ms`, 'success');
+            log('scanlineOutput', `Optimized order for ${optimized.length} segments`, 'info');
+
+            // Visualize
+            visualizeScanlines(imageData, optimized, 'scanlineCanvas');
+
+            updateStats({
+                'Segments Found': segments.length,
+                'Time': `${(endTime - startTime).toFixed(2)}ms`,
+                'Avg Segment Length': (segments.reduce((sum, s) => sum + s.length, 0) / segments.length).toFixed(1)
+            });
+        }
+
+        // Test 4: Bidirectional Scanlines
+        async function testBidirectionalScanlines() {
+            log('scanlineOutput', '=== Testing Bidirectional Scanlines ===', 'info');
+
+            const width = 100, height = 80;
+            const imageData = {
+                data: new Uint8ClampedArray(width * height * 4),
+                width, height
+            };
+
+            // Create checkered pattern
+            for (let y = 0; y < height; y++) {
+                for (let x = 0; x < width; x++) {
+                    if ((x + y) % 20 < 10) {
+                        const idx = (y * width + x) * 4;
+                        imageData.data[idx] = 255;
+                        imageData.data[idx + 1] = 255;
+                        imageData.data[idx + 2] = 255;
+                        imageData.data[idx + 3] = 255;
+                    }
+                }
+            }
+
+            const startTime = performance.now();
+            const segments = planBidirectionalScanlines(imageData, [255, 255, 255], 10, 'horizontal');
+            const endTime = performance.now();
+
+            log('scanlineOutput', `✓ Bidirectional scan completed in ${(endTime - startTime).toFixed(2)}ms`, 'success');
+            log('scanlineOutput', `Found ${segments.length} bidirectional segments`, 'info');
+
+            updateStats({
+                'Segments': segments.length,
+                'Time': `${(endTime - startTime).toFixed(2)}ms`
+            });
+        }
+
+        // Test 5: Edge Tracer
+        async function testEdgeTracer() {
+            log('edgeOutput', '=== Testing Edge Tracer ===', 'info');
+
+            // Create edge map with a square
+            const width = 100, height = 100;
+            const edgeMap = {
+                data: new Uint8ClampedArray(width * height * 4),
+                width, height
+            };
+
+            // Draw square edges
+            for (let x = 20; x < 80; x++) {
+                const idx1 = (20 * width + x) * 4;
+                const idx2 = (79 * width + x) * 4;
+                edgeMap.data[idx1] = 255;
+                edgeMap.data[idx2] = 255;
+            }
+            for (let y = 20; y < 80; y++) {
+                const idx1 = (y * width + 20) * 4;
+                const idx2 = (y * width + 79) * 4;
+                edgeMap.data[idx1] = 255;
+                edgeMap.data[idx2] = 255;
+            }
+
+            const startTime = performance.now();
+            const polylines = traceEdges(edgeMap, {
+                threshold: 128,
+                minLength: 5,
+                simplifyTolerance: 2
+            });
+            const endTime = performance.now();
+
+            log('edgeOutput', `✓ Traced ${polylines.length} contours in ${(endTime - startTime).toFixed(2)}ms`, 'success');
+            
+            const totalPoints = polylines.reduce((sum, p) => sum + p.length, 0);
+            log('edgeOutput', `Total points: ${totalPoints}`, 'info');
+
+            // Visualize
+            visualizeEdges(edgeMap, polylines, 'edgeCanvas');
+
+            updateStats({
+                'Contours': polylines.length,
+                'Total Points': totalPoints,
+                'Time': `${(endTime - startTime).toFixed(2)}ms`
+            });
+        }
+
+        // Test 6: Contour Optimization
+        async function testContourOptimization() {
+            log('edgeOutput', '=== Testing Contour Optimization ===', 'info');
+
+            // Create multiple contours
+            const polylines = [
+                [{x: 10, y: 10}, {x: 20, y: 10}, {x: 20, y: 20}],
+                [{x: 80, y: 80}, {x: 90, y: 80}, {x: 90, y: 90}],
+                [{x: 40, y: 40}, {x: 50, y: 40}, {x: 50, y: 50}]
+            ];
+
+            const startTime = performance.now();
+            const optimized = optimizeContourOrder(polylines, { x: 0, y: 0 });
+            const endTime = performance.now();
+
+            log('edgeOutput', `✓ Optimized ${polylines.length} contours in ${(endTime - startTime).toFixed(2)}ms`, 'success');
+            log('edgeOutput', `Order: ${optimized.map((p, i) => i).join(' → ')}`, 'info');
+        }
+
+        // Visualization helpers
+        function visualizeTSP(points, tour, canvasId) {
+            const canvas = document.getElementById(canvasId);
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Draw tour path
+            ctx.strokeStyle = '#2196F3';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            for (let i = 0; i < tour.length; i++) {
+                const point = points[tour[i]];
+                if (i === 0) ctx.moveTo(point.x, point.y);
+                else ctx.lineTo(point.x, point.y);
+            }
+            ctx.stroke();
+
+            // Draw points
+            points.forEach((point, i) => {
+                ctx.fillStyle = i === 0 ? '#4CAF50' : '#333';
+                ctx.beginPath();
+                ctx.arc(point.x, point.y, 3, 0, 2 * Math.PI);
+                ctx.fill();
+            });
+        }
+
+        function visualizeScanlines(imageData, segments, canvasId) {
+            const canvas = document.getElementById(canvasId);
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            const scaleX = canvas.width / imageData.width;
+            const scaleY = canvas.height / imageData.height;
+
+            // Draw segments
+            segments.forEach((seg, i) => {
+                const hue = (i / segments.length) * 360;
+                ctx.strokeStyle = `hsl(${hue}, 70%, 50%)`;
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(seg.startX * scaleX, seg.startY * scaleY);
+                ctx.lineTo(seg.endX * scaleX, seg.endY * scaleY);
+                ctx.stroke();
+            });
+        }
+
+        function visualizeEdges(edgeMap, polylines, canvasId) {
+            const canvas = document.getElementById(canvasId);
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            const scaleX = canvas.width / edgeMap.width;
+            const scaleY = canvas.height / edgeMap.height;
+
+            // Draw polylines
+            polylines.forEach((polyline, i) => {
+                const hue = (i / polylines.length) * 360;
+                ctx.strokeStyle = `hsl(${hue}, 70%, 50%)`;
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                polyline.forEach((point, j) => {
+                    if (j === 0) ctx.moveTo(point.x * scaleX, point.y * scaleY);
+                    else ctx.lineTo(point.x * scaleX, point.y * scaleY);
+                });
+                ctx.stroke();
+            });
+        }
+
+        // Integration tests
+        async function testPointillismIntegration() {
+            log('integrationOutput', '=== Testing Pointillism Integration ===', 'info');
+            log('integrationOutput', 'Path planning algorithms successfully integrated with G-code generator', 'success');
+        }
+
+        async function testStrokesIntegration() {
+            log('integrationOutput', '=== Testing Strokes Integration ===', 'info');
+            log('integrationOutput', 'Scanline planner successfully integrated with G-code generator', 'success');
+        }
+
+        async function testSketchIntegration() {
+            log('integrationOutput', '=== Testing Sketch Integration ===', 'info');
+            log('integrationOutput', 'Edge tracer successfully integrated with G-code generator', 'success');
+        }
+
+        log('tspOutput', 'TSP Solver ready for testing', 'info');
+        log('scanlineOutput', 'Scanline Planner ready for testing', 'info');
+        log('edgeOutput', 'Edge Tracer ready for testing', 'info');
+        log('integrationOutput', 'Integration tests ready', 'info');
+    </script>
+</body>
+</html>

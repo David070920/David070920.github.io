@@ -1,0 +1,191 @@
+Project Title: MuralBot G-Code Generator
+
+Core Objective: Create an application that converts a user-uploaded image (JPG, PNG) into a specialized G-code file for a cable-driven wall-painting robot. The app must provide a simulation preview and allow detailed configuration of the robot's parameters.
+
+1. UI Layout
+
+The application should have a clear, multi-panel layout:
+
+Left Panel (Configuration): Tabs for all settings.
+
+Center Panel (Preview): Two canvases: one for the original uploaded image and one for the simulated painting preview.
+
+Right Panel (Output): A summary/estimation section, a text area for the generated G-code, and a download button.
+
+2. Core Functionality: Image to G-Code
+
+Image Input: Allow users to upload a JPG or PNG file.
+
+Note on Vector: If a vector file (SVG) is input, the app should first rasterize it to a high-resolution bitmap before processing.
+
+Coordinate System: The robot uses a trilateration system. G-code output (X, Y, Z) values must be calculated as follows for any given Cartesian point (px, py) on the canvas (where (0,0) is the top-left):
+
+The system uses three anchor points, defined in the settings (AnchorTL, AnchorTR, AnchorBC).
+
+By default, these are:
+
+AnchorTL = (0, 0)
+
+AnchorTR = (CanvasWidth, 0)
+
+AnchorBC = (CanvasWidth / 2, CanvasHeight)
+
+X = sqrt((AnchorTL.x - px)^2 + (AnchorTL.y - py)^2) (Distance from top-left anchor)
+
+Y = sqrt((AnchorTR.x - px)^2 + (AnchorTR.y - py)^2) (Distance from top-right anchor)
+
+Z = sqrt((AnchorBC.x - px)^2 + (AnchorBC.y - py)^2) (Distance from bottom-center anchor)
+
+G-Code Commands:
+
+G0 / G1 [X] [Y] [Z]: Rapid/Linear move to a calculated position.
+
+M3: Spray On (Start solenoid).
+
+M5: Spray Off (Stop solenoid).
+
+M6: Tool/Can change (used for color change or refill).
+
+G4 P[seconds]: Pause.
+
+3. Configuration Panel (Tabs)
+
+Tab 1: Robot & Canvas Setup
+
+Canvas Dimensions:
+
+Width (mm): Numeric input.
+
+Height (mm): Numeric input.
+
+Robot Settings:
+
+Refill Position: A button to set the refill coordinates (e.g., "Move to Bottom-Left"). This should generate a G-code move to the pre-defined refill anchor point.
+
+Paint Capacity (mm²): A variable to define the total surface area one can of paint can cover.
+
+G0/G1 Move Speed (mm/s): Numeric input (for time estimation).
+
+Advanced Anchor Setup (Optional):
+
+Anchor Top-Left (x, y): Two numeric inputs.
+
+Anchor Top-Right (x, y): Two numeric inputs.
+
+Anchor Bottom-Center (x, y): Two numeric inputs.
+
+Note: These define the anchor points relative to the canvas origin (top-left (0,0)).
+
+Tab 2: Paint & Color Settings
+
+Number of Colors: Numeric input (e.g., 1-10). This will determine the number of color layers to process.
+
+Color Selection: Radio buttons:
+
+Auto-Pick Colors: Use a K-Means clustering algorithm on the source image to find the N most dominant colors.
+
+Manual Color Entry: If selected, display N color picker inputs (for hex or RGB values).
+
+Painting Mode: Radio buttons:
+
+Dot Mode (Halftoning): The robot will paint the image using discrete dots.
+
+Spray Dot Diameter (mm): Numeric input.
+
+Continuous Line Mode: The robot will spray in continuous horizontal (or vertical) scanlines.
+
+Line Thickness (mm): Numeric input.
+
+Edge Detection Mode (Sketch): Uses a Canny (or similar) filter to find outlines.
+
+Line Thickness (mm): Numeric input.
+
+Threshold (Low): Slider.
+
+Threshold (High): Slider.
+
+Tab 3: Nozzle Template
+
+Nozzle Shape: Dropdown/Radio buttons (Round, Square).
+
+Nozzle Size (mm): Numeric input (diameter for Round, side length for Square).
+
+Note: This setting modifies the simulation and the painting logic.
+
+In Dot Mode, this Nozzle Size overrides the Spray Dot Diameter.
+
+In Continuous Line Mode or Edge Detection Mode, this Nozzle Size overrides the Line Thickness.
+
+4. Generation Process (Logic)
+
+When the "Generate" button is pressed:
+
+Image Pre-processing:
+
+If Edge Detection Mode is active, apply the filter first to create a monochrome outline image.
+
+If not, Color Separate the image into N layers.
+
+Path Planning (for each color layer):
+
+If Dot Mode:
+
+Implement a halftoning/dithering algorithm (e.g., Floyd-Steinberg) based on the Spray Dot Diameter.
+
+Path Optimization: Treat all dots of one color as nodes and use a TSP heuristic (e.g., nearest-neighbor) to calculate the shortest path instead of simple scanlines.
+
+Generate a path of G0 (move) and M3/G4/M5 (spray dot) commands for each dot.
+
+If Continuous Line Mode:
+
+Implement a scanline algorithm (e.g., horizontal).
+
+Generate paths: G0 to the start of a colored segment, M3 to turn spray on, G1 to move to the end of the segment, M5 to turn spray off.
+
+If Edge Detection Mode:
+
+Trace the pixels from the edge detection output.
+
+Generate G0/G1 paths that follow the outlines, using M3/M5 to control the spray.
+
+Refill Logic Integration:
+
+While generating paths, maintain a counter for area_painted.
+
+area_painted += (dot_area) or area_painted += (line_segment_length * line_thickness).
+
+When area_painted > Paint Capacity (mm²):
+
+Insert G-code to move to the Refill Position.
+
+Insert a G4 P60 (pause 60s, or make this time configurable) and an M6 (tool change) command.
+
+Reset area_painted = 0.
+
+Insert G-code to return to the last painting position and resume.
+
+Color Change Logic: After a full color layer is complete, insert G-code to move to a safe position (e.g., Refill Position), pause, and issue an M6 command to signal a manual can change.
+
+5. Outputs
+
+Painting Preview (Canvas):
+
+Clear the preview canvas.
+
+Simulate the generated G-code path, drawing the dots or lines (using the selected Nozzle Shape and Size) onto the canvas. This provides a visual confirmation of the robot's actions.
+
+Job Estimation (Summary):
+
+Display calculated estimates based on the generated G-code:
+
+Estimated Job Time: (e.g., "2h 15m")
+
+Paint Consumed: (e.g., "3.5 cans / 1.2 refills")
+
+Total Travel Distance: (e.g., "850.5 m")
+
+G-Code (Textarea):
+
+Display the complete, generated G-code.
+
+Include a "Download G-Code" button that saves the content as a .gcode or .txt file.
