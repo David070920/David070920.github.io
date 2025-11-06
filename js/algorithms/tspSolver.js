@@ -7,7 +7,7 @@
  * @module algorithms/tspSolver
  */
 
-import { EventBus } from '../core/eventBus.js';
+import eventBus from '../core/eventBus.js';
 import { SpatialIndex } from './spatialIndex.js';
 
 /**
@@ -52,7 +52,7 @@ export function nearestNeighbor(points, startIndex = 0) {
     if (points.length === 0) return [];
     if (points.length === 1) return [0];
     
-    EventBus.emit('PATH_PLANNING_STARTED', {
+    eventBus.emit('PATH_PLANNING_STARTED', {
         algorithm: 'nearest-neighbor',
         pointCount: points.length
     });
@@ -118,7 +118,7 @@ export function nearestNeighbor(points, startIndex = 0) {
         
         // Emit progress periodically
         if (tour.length % 100 === 0) {
-            EventBus.emit('PATH_PLANNING_PROGRESS', {
+            eventBus.emit('PATH_PLANNING_PROGRESS', {
                 progress: visited.size / points.length
             });
         }
@@ -126,7 +126,7 @@ export function nearestNeighbor(points, startIndex = 0) {
     
     const tourLength = calculateTourLength(tour, points);
     
-    EventBus.emit('PATH_PLANNING_COMPLETE', {
+    eventBus.emit('PATH_PLANNING_COMPLETE', {
         algorithm: 'nearest-neighbor',
         pointCount: points.length,
         tourLength
@@ -145,7 +145,7 @@ export function nearestNeighbor(points, startIndex = 0) {
 export function twoOpt(tour, points, maxIterations = 1000) {
     if (tour.length < 4) return tour; // 2-opt requires at least 4 points
     
-    EventBus.emit('PATH_PLANNING_STARTED', {
+    eventBus.emit('PATH_PLANNING_STARTED', {
         algorithm: '2-opt',
         pointCount: tour.length
     });
@@ -189,13 +189,13 @@ export function twoOpt(tour, points, maxIterations = 1000) {
         
         // Emit progress periodically
         if (iterations % 10 === 0) {
-            EventBus.emit('PATH_PLANNING_PROGRESS', {
+            eventBus.emit('PATH_PLANNING_PROGRESS', {
                 progress: Math.min(0.99, iterations / maxIterations)
             });
         }
     }
     
-    EventBus.emit('PATH_PLANNING_COMPLETE', {
+    eventBus.emit('PATH_PLANNING_COMPLETE', {
         algorithm: '2-opt',
         pointCount: tour.length,
         tourLength: bestLength,

@@ -4,7 +4,7 @@
  * @module algorithms/kMeans
  */
 
-import EventBus from '../core/eventBus.js';
+import eventBus from '../core/eventBus.js';
 import { rgbDistance, clampRgb } from './colorUtils.js';
 
 /**
@@ -12,7 +12,7 @@ import { rgbDistance, clampRgb } from './colorUtils.js';
  */
 export class KMeans {
     constructor() {
-        this.eventBus = EventBus.getInstance();
+        this.eventBus = eventBus;
     }
 
     /**

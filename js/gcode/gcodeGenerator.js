@@ -213,8 +213,26 @@ export class GCodeGenerator {
      */
     async generateLayerGcode(layer, layerIndex, config, anchors, canvasWidthMm, canvasHeightMm, refillTracker) {
         const lines = [];
-        const { color, pixels } = layer;
+        
+        // DEBUG: Log what we receive
+        console.log('🔍 [GCodeGenerator] generateLayerGcode called with layer:', {
+            hasColor: !!layer.color,
+            hasImageData: !!layer.imageData,
+            hasPixelCount: !!layer.pixelCount,
+            hasPixels: !!layer.pixels,
+            layerKeys: Object.keys(layer)
+        });
+        
+        const { color, imageData, pixelCount } = layer;
         const paintingMode = config.paint.paintingMode;
+
+        // Extract pixel coordinates from ImageData
+        console.log('🔍 [GCodeGenerator] Extracting pixels from ImageData...');
+        const pixels = this._extractPixelCoordinates(imageData);
+        const imageWidth = imageData.width;
+        const imageHeight = imageData.height;
+        
+        console.log(`✅ [GCodeGenerator] Extracted ${pixels.length} pixels from ${imageWidth}x${imageHeight} image`);
 
         // Layer header
         lines.push(builder.separator(`COLOR LAYER ${layerIndex + 1}`));
@@ -230,8 +248,8 @@ export class GCodeGenerator {
         if (paintingMode === 'pointillism') {
             lines.push(...await this.generatePointillismGcode(
                 pixels,
-                layer.imageWidth,
-                layer.imageHeight,
+                imageWidth,
+                imageHeight,
                 config,
                 anchors,
                 canvasWidthMm,
@@ -241,8 +259,8 @@ export class GCodeGenerator {
         } else if (paintingMode === 'strokes') {
             lines.push(...await this.generateStrokesGcode(
                 pixels,
-                layer.imageWidth,
-                layer.imageHeight,
+                imageWidth,
+                imageHeight,
                 config,
                 anchors,
                 canvasWidthMm,
@@ -269,11 +287,40 @@ export class GCodeGenerator {
      */
     async generatePointillismGcode(pixels, imageWidth, imageHeight, config, anchors, canvasWidthMm, canvasHeightMm, refillTracker) {
         const lines = [];
-        const { minDotSize, maxDotSize } = config.paint.pointillism;
+        const { minDotSize, maxDotSize, dotDensity } = config.paint.pointillism;
         const moveSpeed = config.robot.moveSpeed;
         const dwellTime = 0.1; // 100ms spray time per dot
 
-        lines.push(builder.comment(`Painting ${pixels.length} dots`));
+        console.log(`🔍 [GCodeGenerator] Pointillism mode - original pixels: ${pixels.length}`);
+        
+        // Downsample pixels based on dot density to prevent stack overflow
+        // dotDensity is a percentage (0-100), we use it to calculate grid spacing
+        const sampledPixels = this._downsamplePixels(pixels, imageWidth, imageHeight, dotDensity);
+        
+        console.log(`✅ [GCodeGenerator] Downsampled to ${sampledPixels.length} dots (density: ${dotDensity}%)`);
+        
+        lines.push(builder.comment(`Painting ${sampledPixels.length} dots (${dotDensity}% density)`));
+
+        // SAFETY: Skip TSP for very large sets (>10000 pixels)
+        if (sampledPixels.length > 10000) {
+            console.warn(`⚠️ [GCodeGenerator] Too many dots (${sampledPixels.length}), using simple grid order instead of TSP`);
+            lines.push(builder.comment('Using grid order (too many dots for TSP optimization)'));
+            
+            // Paint in simple grid order
+            for (let i = 0; i < sampledPixels.length; i++) {
+                const pixel = sampledPixels[i];
+                await this._paintSingleDot(pixel, imageWidth, imageHeight, config, anchors, canvasWidthMm, canvasHeightMm, refillTracker, minDotSize, maxDotSize, moveSpeed, dwellTime, lines);
+                
+                if (i % 100 === 0) {
+                    eventBus.emit('GCODE_GENERATION_PROGRESS', {
+                        progress: (i / sampledPixels.length) * 100,
+                        message: `Painting dot ${i + 1}/${sampledPixels.length}`
+                    });
+                }
+            }
+            
+            return lines;
+        }
 
         // Determine starting point for TSP
         let startIndex = 0;
@@ -293,52 +340,18 @@ export class GCodeGenerator {
 
         // Optimize dot order using TSP solver
         lines.push(builder.comment('Optimizing dot order using TSP...'));
-        const tour = solveTSP(pixels, {
+        const tour = solveTSP(sampledPixels, {
             startIndex,
-            optimize: pixels.length < 500 // Use 2-opt for smaller sets
+            optimize: sampledPixels.length < 500 // Use 2-opt for smaller sets
         });
         lines.push(builder.comment(`Tour optimized: ${tour.length} dots`));
 
         // Paint dots in optimized order
         for (let i = 0; i < tour.length; i++) {
             const pixelIndex = tour[i];
-            const pixel = pixels[pixelIndex];
-
-            // Scale pixel to physical coordinates
-            const physical = transformer.scaleToPhysical(
-                pixel.x,
-                pixel.y,
-                imageWidth,
-                imageHeight,
-                canvasWidthMm,
-                canvasHeightMm
-            );
-
-            // Transform to trilateration coordinates
-            const coords = transformer.cartesianToTrilateration(
-                physical.x,
-                physical.y,
-                anchors
-            );
-
-            // Calculate dot size (random between min and max)
-            const dotSize = minDotSize + Math.random() * (maxDotSize - minDotSize);
-
-            // Add paint usage
-            const needsRefill = refillTracker.addDotUsage(dotSize);
-
-            // Check if refill needed
-            if (needsRefill) {
-                lines.push(builder.comment('Paint low - refill needed'));
-                lines.push(...this.generateRefillSequence(coords, config, anchors));
-                refillTracker.refill();
-            }
-
-            // Generate dot painting commands
-            lines.push(...builder.paintDot(coords.X, coords.Y, coords.Z, dwellTime, moveSpeed));
-
-            // Update current position
-            this._currentPosition = { x: pixel.x, y: pixel.y };
+            const pixel = sampledPixels[pixelIndex];
+            
+            await this._paintSingleDot(pixel, imageWidth, imageHeight, config, anchors, canvasWidthMm, canvasHeightMm, refillTracker, minDotSize, maxDotSize, moveSpeed, dwellTime, lines);
 
             // Emit progress periodically
             if (i % 100 === 0) {
@@ -657,8 +670,112 @@ export class GCodeGenerator {
     }
 
     /**
+     * Extract pixel coordinates from ImageData
+     * Returns array of {x, y} coordinates for all opaque pixels
+     *
+     * @private
+     * @param {ImageData} imageData - Image data to extract from
+     * @returns {Array} Array of {x, y} coordinates
+     */
+    _extractPixelCoordinates(imageData) {
+        const pixels = [];
+        const width = imageData.width;
+        const height = imageData.height;
+        const data = imageData.data;
+
+        for (let y = 0; y < height; y++) {
+            for (let x = 0; x < width; x++) {
+                const idx = (y * width + x) * 4;
+                const alpha = data[idx + 3];
+                
+                // Include pixel if it's opaque
+                if (alpha > 0) {
+                    pixels.push({ x, y });
+                }
+            }
+        }
+
+        return pixels;
+    }
+
+    /**
+     * Downsample pixels using grid-based sampling
+     * @private
+     * @param {Array} pixels - Array of pixel coordinates
+     * @param {number} imageWidth - Image width
+     * @param {number} imageHeight - Image height
+     * @param {number} density - Density percentage (0-100)
+     * @returns {Array} Downsampled pixel array
+     */
+    _downsamplePixels(pixels, imageWidth, imageHeight, density) {
+        // Calculate grid spacing based on density
+        // density 100% = every 1 pixel, 50% = every 2 pixels, 25% = every 4 pixels, etc.
+        const spacing = Math.max(1, Math.floor(Math.sqrt(10000 / density)));
+        
+        console.log(`🔍 [GCodeGenerator] Downsampling with grid spacing: ${spacing}`);
+        
+        // Create a 2D grid to track which cells have pixels
+        const grid = new Map();
+        
+        for (const pixel of pixels) {
+            const gridX = Math.floor(pixel.x / spacing);
+            const gridY = Math.floor(pixel.y / spacing);
+            const key = `${gridX},${gridY}`;
+            
+            // Keep first pixel in each grid cell
+            if (!grid.has(key)) {
+                grid.set(key, pixel);
+            }
+        }
+        
+        return Array.from(grid.values());
+    }
+
+    /**
+     * Paint a single dot
+     * @private
+     */
+    async _paintSingleDot(pixel, imageWidth, imageHeight, config, anchors, canvasWidthMm, canvasHeightMm, refillTracker, minDotSize, maxDotSize, moveSpeed, dwellTime, lines) {
+        // Scale pixel to physical coordinates
+        const physical = transformer.scaleToPhysical(
+            pixel.x,
+            pixel.y,
+            imageWidth,
+            imageHeight,
+            canvasWidthMm,
+            canvasHeightMm
+        );
+
+        // Transform to trilateration coordinates
+        const coords = transformer.cartesianToTrilateration(
+            physical.x,
+            physical.y,
+            anchors
+        );
+
+        // Calculate dot size (random between min and max)
+        const dotSize = minDotSize + Math.random() * (maxDotSize - minDotSize);
+
+        // Add paint usage
+        const needsRefill = refillTracker.addDotUsage(dotSize);
+
+        // Check if refill needed
+        if (needsRefill) {
+            lines.push(builder.comment('Paint low - refill needed'));
+            lines.push(...this.generateRefillSequence(coords, config, anchors));
+            refillTracker.refill();
+        }
+
+        // Generate dot painting commands
+        lines.push(...builder.paintDot(coords.X, coords.Y, coords.Z, dwellTime, moveSpeed));
+
+        // Update current position
+        this._currentPosition = { x: pixel.x, y: pixel.y };
+    }
+
+    /**
      * Enable or disable debug logging
-     * 
+     *
      * @param {boolean} enabled - Debug mode flag
      */
     setDebug(enabled) {

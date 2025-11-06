@@ -4,7 +4,7 @@
  * @module algorithms/edgeDetection
  */
 
-import EventBus from '../core/eventBus.js';
+import eventBus from '../core/eventBus.js';
 import { rgbToGray } from './colorUtils.js';
 
 /**
@@ -12,7 +12,7 @@ import { rgbToGray } from './colorUtils.js';
  */
 export class EdgeDetection {
     constructor() {
-        this.eventBus = EventBus.getInstance();
+        this.eventBus = eventBus;
     }
 
     /**

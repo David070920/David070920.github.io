@@ -206,7 +206,8 @@ async function handleImageLoadedEvent(data) {
             previewGenerator.clear();
         }
         
-        // Store in state
+        // Store the actual image object and metadata in state
+        state.set('processing.uploadedImage', data.image, false);
         state.set('processing.imageData', {
             name: data.file.name,
             type: data.file.type,
@@ -826,9 +827,9 @@ async function handleGenerateGCode() {
     console.log('⚡ Generate G-Code clicked');
     
     try {
-        // Get current image data from canvas
-        const originalImageData = canvasManager.getImageData('original');
-        if (!originalImageData) {
+        // Get the uploaded image object from state
+        const uploadedImage = state.get('processing.uploadedImage');
+        if (!uploadedImage) {
             showError('No image loaded. Please upload an image first.');
             return;
         }
@@ -845,9 +846,74 @@ async function handleGenerateGCode() {
         
         showProgress(5, 'Starting image processing...');
         
-        // Preprocess image
-        const processedImageData = await imagePreprocessor.preprocess(
-            originalImageData,
+        // ============================================================================
+        // DEBUG: Comprehensive image object inspection
+        // ============================================================================
+        console.log('🔍 DEBUG: Inspecting uploadedImage object:');
+        console.log('  - Type:', typeof uploadedImage);
+        console.log('  - Constructor:', uploadedImage?.constructor?.name);
+        console.log('  - Is HTMLImageElement:', uploadedImage instanceof HTMLImageElement);
+        console.log('  - Is complete (loaded):', uploadedImage?.complete);
+        console.log('  - Width:', uploadedImage?.width);
+        console.log('  - Height:', uploadedImage?.height);
+        console.log('  - Natural width:', uploadedImage?.naturalWidth);
+        console.log('  - Natural height:', uploadedImage?.naturalHeight);
+        console.log('  - Src (first 100 chars):', uploadedImage?.src?.substring(0, 100));
+        console.log('  - Current src:', uploadedImage?.currentSrc?.substring(0, 100));
+        
+        // Alternative approach: Get image from canvas instead of state
+        // The canvas already displayed the image successfully, so we know it has a valid image
+        console.log('🔄 DEBUG: Attempting to get image from canvas as alternative...');
+        
+        let imageToPreprocess = uploadedImage;
+        
+        // If uploadedImage is problematic, try getting from canvas
+        if (!uploadedImage || !(uploadedImage instanceof HTMLImageElement) || !uploadedImage.complete) {
+            console.warn('⚠️ uploadedImage is invalid, getting from canvas instead');
+            
+            try {
+                // Get the canvas that already has the image displayed
+                const originalCanvas = canvasManager.getCanvas('original');
+                
+                // Create a new Image from the canvas
+                const canvasDataUrl = originalCanvas.toDataURL('image/png');
+                const imageFromCanvas = new Image();
+                
+                // Wait for the image to load
+                await new Promise((resolve, reject) => {
+                    imageFromCanvas.onload = () => {
+                        console.log('✅ Successfully created image from canvas');
+                        console.log('  - Width:', imageFromCanvas.width);
+                        console.log('  - Height:', imageFromCanvas.height);
+                        console.log('  - Complete:', imageFromCanvas.complete);
+                        resolve();
+                    };
+                    imageFromCanvas.onerror = (err) => {
+                        console.error('❌ Failed to create image from canvas:', err);
+                        reject(new Error('Failed to create image from canvas'));
+                    };
+                    imageFromCanvas.src = canvasDataUrl;
+                });
+                
+                imageToPreprocess = imageFromCanvas;
+                console.log('✅ Using image from canvas for preprocessing');
+            } catch (canvasError) {
+                console.error('❌ Failed to get image from canvas:', canvasError);
+                throw new Error('Unable to get valid image for processing. Please try uploading the image again.');
+            }
+        }
+        
+        console.log('🔍 DEBUG: Final image to preprocess:');
+        console.log('  - Type:', typeof imageToPreprocess);
+        console.log('  - Is HTMLImageElement:', imageToPreprocess instanceof HTMLImageElement);
+        console.log('  - Complete:', imageToPreprocess.complete);
+        console.log('  - Width:', imageToPreprocess.width);
+        console.log('  - Height:', imageToPreprocess.height);
+        
+        // Preprocess image - pass the HTMLImageElement
+        console.log('🔄 Calling imagePreprocessor.preprocess()...');
+        const preprocessResult = await imagePreprocessor.preprocess(
+            imageToPreprocess,
             {
                 resize: {
                     enabled: false // Use original size for now
@@ -862,6 +928,10 @@ async function handleGenerateGCode() {
                 }
             }
         );
+        console.log('✅ Preprocessing complete');
+        
+        // Extract the processed ImageData
+        const processedImageData = preprocessResult.imageData;
         
         showProgress(15, 'Image preprocessed');
         
@@ -884,7 +954,7 @@ async function handleGenerateGCode() {
             );
             
             // Display edge map on preview canvas
-            canvasManager.displayImageData(edgeMap, 'preview');
+            canvasManager.displayPreview(edgeMap);
             
             showProgress(60, 'Edges detected');
             
@@ -924,7 +994,7 @@ async function handleGenerateGCode() {
             const quantizedImage = kMeans.quantizeImage(processedImageData, colorPalette);
             
             // Display quantized image on preview canvas
-            canvasManager.displayImageData(quantizedImage, 'preview');
+            canvasManager.displayPreview(quantizedImage);
             
             showProgress(50, 'Image quantized');
             

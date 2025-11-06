@@ -8,7 +8,7 @@
  * @module algorithms/scanlinePlanner
  */
 
-import { EventBus } from '../core/eventBus.js';
+import eventBus from '../core/eventBus.js';
 
 /**
  * Calculate Euclidean distance between two points
@@ -58,7 +58,7 @@ function matchesColor(imageData, x, y, width, targetColor, tolerance) {
  * @returns {Array<Object>} Array of line segments {startX, startY, endX, endY, length}
  */
 export function planHorizontalScanlines(imageData, targetColor, tolerance = 30) {
-    EventBus.emit('PATH_PLANNING_STARTED', {
+    eventBus.emit('PATH_PLANNING_STARTED', {
         algorithm: 'horizontal-scanlines',
         imageSize: `${imageData.width}x${imageData.height}`
     });
@@ -104,13 +104,13 @@ export function planHorizontalScanlines(imageData, targetColor, tolerance = 30) 
         
         // Emit progress periodically
         if (y % 50 === 0) {
-            EventBus.emit('PATH_PLANNING_PROGRESS', {
+            eventBus.emit('PATH_PLANNING_PROGRESS', {
                 progress: y / height
             });
         }
     }
     
-    EventBus.emit('PATH_PLANNING_COMPLETE', {
+    eventBus.emit('PATH_PLANNING_COMPLETE', {
         algorithm: 'horizontal-scanlines',
         segmentCount: segments.length
     });
@@ -126,7 +126,7 @@ export function planHorizontalScanlines(imageData, targetColor, tolerance = 30) 
  * @returns {Array<Object>} Array of line segments {startX, startY, endX, endY, length}
  */
 export function planVerticalScanlines(imageData, targetColor, tolerance = 30) {
-    EventBus.emit('PATH_PLANNING_STARTED', {
+    eventBus.emit('PATH_PLANNING_STARTED', {
         algorithm: 'vertical-scanlines',
         imageSize: `${imageData.width}x${imageData.height}`
     });
@@ -172,13 +172,13 @@ export function planVerticalScanlines(imageData, targetColor, tolerance = 30) {
         
         // Emit progress periodically
         if (x % 50 === 0) {
-            EventBus.emit('PATH_PLANNING_PROGRESS', {
+            eventBus.emit('PATH_PLANNING_PROGRESS', {
                 progress: x / width
             });
         }
     }
     
-    EventBus.emit('PATH_PLANNING_COMPLETE', {
+    eventBus.emit('PATH_PLANNING_COMPLETE', {
         algorithm: 'vertical-scanlines',
         segmentCount: segments.length
     });
@@ -202,7 +202,7 @@ export function optimizeScanlineOrder(segments, startPos = { x: 0, y: 0 }) {
         }];
     }
     
-    EventBus.emit('PATH_PLANNING_STARTED', {
+    eventBus.emit('PATH_PLANNING_STARTED', {
         algorithm: 'scanline-optimization',
         segmentCount: segments.length
     });
@@ -259,13 +259,13 @@ export function optimizeScanlineOrder(segments, startPos = { x: 0, y: 0 }) {
         
         // Emit progress periodically
         if (orderedSegments.length % 100 === 0) {
-            EventBus.emit('PATH_PLANNING_PROGRESS', {
+            eventBus.emit('PATH_PLANNING_PROGRESS', {
                 progress: orderedSegments.length / segments.length
             });
         }
     }
     
-    EventBus.emit('PATH_PLANNING_COMPLETE', {
+    eventBus.emit('PATH_PLANNING_COMPLETE', {
         algorithm: 'scanline-optimization',
         segmentCount: orderedSegments.length
     });
@@ -283,7 +283,7 @@ export function optimizeScanlineOrder(segments, startPos = { x: 0, y: 0 }) {
  * @returns {Array<Object>} Array of optimized line segments with direction
  */
 export function planBidirectionalScanlines(imageData, targetColor, tolerance = 30, direction = 'horizontal') {
-    EventBus.emit('PATH_PLANNING_STARTED', {
+    eventBus.emit('PATH_PLANNING_STARTED', {
         algorithm: `bidirectional-${direction}-scanlines`,
         imageSize: `${imageData.width}x${imageData.height}`
     });
@@ -334,7 +334,7 @@ export function planBidirectionalScanlines(imageData, targetColor, tolerance = 3
             }
             
             if (y % 50 === 0) {
-                EventBus.emit('PATH_PLANNING_PROGRESS', {
+                eventBus.emit('PATH_PLANNING_PROGRESS', {
                     progress: y / height
                 });
             }
@@ -382,14 +382,14 @@ export function planBidirectionalScanlines(imageData, targetColor, tolerance = 3
             }
             
             if (x % 50 === 0) {
-                EventBus.emit('PATH_PLANNING_PROGRESS', {
+                eventBus.emit('PATH_PLANNING_PROGRESS', {
                     progress: x / width
                 });
             }
         }
     }
     
-    EventBus.emit('PATH_PLANNING_COMPLETE', {
+    eventBus.emit('PATH_PLANNING_COMPLETE', {
         algorithm: `bidirectional-${direction}-scanlines`,
         segmentCount: segments.length
     });

@@ -3,7 +3,7 @@
  * Manages animation frames and playback controls
  */
 
-import { EventBus } from '../core/eventBus.js';
+import eventBus from '../core/eventBus.js';
 
 /**
  * Animation events
@@ -38,7 +38,7 @@ export class AnimationController {
         }
 
         this.simulator = simulator;
-        this.eventBus = EventBus.getInstance();
+        this.eventBus = eventBus;
         
         // Animation state
         this.state = PlaybackState.STOPPED;

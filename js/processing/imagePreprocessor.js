@@ -65,7 +65,7 @@ class ImagePreprocessor {
       // Step 1: Resize image if needed
       let processedImage = image;
       if (maxWidth || maxHeight) {
-        processedImage = this.resizeImage(image, {
+        processedImage = await this.resizeImage(image, {
           maxWidth,
           maxHeight,
           maintainAspectRatio
@@ -86,7 +86,7 @@ class ImagePreprocessor {
       }
 
       // Convert back to image if needed
-      const finalImage = this._imageDataToImage(imageData);
+      const finalImage = await this._imageDataToImage(imageData);
 
       // Emit completion event
       eventBus.emit(Events.PROCESSING_COMPLETED, {
@@ -126,9 +126,9 @@ class ImagePreprocessor {
    * @param {number} options.maxWidth - Maximum width
    * @param {number} options.maxHeight - Maximum height
    * @param {boolean} options.maintainAspectRatio - Maintain aspect ratio (default: true)
-   * @returns {HTMLImageElement} Resized image
+   * @returns {Promise<HTMLImageElement>} Resized image
    */
-  resizeImage(image, options = {}) {
+  async resizeImage(image, options = {}) {
     const {
       maxWidth,
       maxHeight,
@@ -162,9 +162,16 @@ class ImagePreprocessor {
     // Draw resized image
     this._tempContext.drawImage(image, 0, 0, targetWidth, targetHeight);
 
-    // Convert to image
+    // Convert to image and wait for it to load
     const resizedImage = new Image();
-    resizedImage.src = this._tempCanvas.toDataURL('image/png');
+    const dataUrl = this._tempCanvas.toDataURL('image/png');
+    
+    // Wait for image to load before returning
+    await new Promise((resolve, reject) => {
+      resizedImage.onload = resolve;
+      resizedImage.onerror = reject;
+      resizedImage.src = dataUrl;
+    });
 
     if (this._debug) {
       console.log('[ImagePreprocessor] Image resized:', {
@@ -259,9 +266,9 @@ class ImagePreprocessor {
   /**
    * Scales image to match canvas dimensions from state
    * @param {HTMLImageElement} image - Source image
-   * @returns {HTMLImageElement} Scaled image
+   * @returns {Promise<HTMLImageElement>} Scaled image
    */
-  scaleToCanvasDimensions(image) {
+  async scaleToCanvasDimensions(image) {
     const canvasWidth = state.get('canvas.width');
     const canvasHeight = state.get('canvas.height');
     const resolution = state.get('processing.resolution') || 'medium';
@@ -279,7 +286,7 @@ class ImagePreprocessor {
     const targetWidth = Math.floor(image.width * scale);
     const targetHeight = Math.floor(image.height * scale);
 
-    return this.resizeImage(image, {
+    return await this.resizeImage(image, {
       maxWidth: targetWidth,
       maxHeight: targetHeight,
       maintainAspectRatio: true
@@ -338,16 +345,24 @@ class ImagePreprocessor {
   /**
    * Converts ImageData to HTMLImageElement
    * @param {ImageData} imageData - Source image data
-   * @returns {HTMLImageElement}
+   * @returns {Promise<HTMLImageElement>}
    * @private
    */
-  _imageDataToImage(imageData) {
+  async _imageDataToImage(imageData) {
     this._tempCanvas.width = imageData.width;
     this._tempCanvas.height = imageData.height;
     this._tempContext.putImageData(imageData, 0, 0);
 
     const image = new Image();
-    image.src = this._tempCanvas.toDataURL('image/png');
+    const dataUrl = this._tempCanvas.toDataURL('image/png');
+    
+    // Wait for image to load before returning
+    await new Promise((resolve, reject) => {
+      image.onload = resolve;
+      image.onerror = reject;
+      image.src = dataUrl;
+    });
+    
     return image;
   }
 

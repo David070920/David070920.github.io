@@ -3,7 +3,7 @@
  * Renders robot painting actions on the simulation canvas
  */
 
-import { EventBus } from '../core/eventBus.js';
+import eventBus from '../core/eventBus.js';
 import { trilaterationToCartesian, scaleToPixels } from '../gcode/coordinateTransformer.js';
 
 /**
@@ -82,7 +82,7 @@ export class GCodeSimulator {
         this.currentSpeed = 'instant';
         
         // Event bus for notifications
-        this.eventBus = EventBus.getInstance();
+        this.eventBus = eventBus;
     }
 
     /**

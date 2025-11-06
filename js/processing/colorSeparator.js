@@ -4,7 +4,7 @@
  * @module processing/colorSeparator
  */
 
-import EventBus from '../core/eventBus.js';
+import eventBus from '../core/eventBus.js';
 import { rgbDistance, areColorsSimilar } from '../algorithms/colorUtils.js';
 
 /**
@@ -12,7 +12,7 @@ import { rgbDistance, areColorsSimilar } from '../algorithms/colorUtils.js';
  */
 export class ColorSeparator {
     constructor() {
-        this.eventBus = EventBus.getInstance();
+        this.eventBus = eventBus;
     }
 
     /**

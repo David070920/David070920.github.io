@@ -8,7 +8,7 @@
  * @module algorithms/edgeTracer
  */
 
-import { EventBus } from '../core/eventBus.js';
+import eventBus from '../core/eventBus.js';
 
 /**
  * Calculate Euclidean distance between two points
@@ -167,7 +167,7 @@ function traceContour(edgeMap, startX, startY, width, height, visited, threshold
  * @returns {Array<Array<{x: number, y: number}>>} Array of contours (each is an array of points)
  */
 export function findEdgeContours(edgeMap, threshold = 128) {
-    EventBus.emit('PATH_PLANNING_STARTED', {
+    eventBus.emit('PATH_PLANNING_STARTED', {
         algorithm: 'edge-contour-detection',
         imageSize: `${edgeMap.width}x${edgeMap.height}`
     });
@@ -197,13 +197,13 @@ export function findEdgeContours(edgeMap, threshold = 128) {
         
         // Emit progress periodically
         if (y % 50 === 0) {
-            EventBus.emit('PATH_PLANNING_PROGRESS', {
+            eventBus.emit('PATH_PLANNING_PROGRESS', {
                 progress: pixelsProcessed / totalPixels
             });
         }
     }
     
-    EventBus.emit('PATH_PLANNING_COMPLETE', {
+    eventBus.emit('PATH_PLANNING_COMPLETE', {
         algorithm: 'edge-contour-detection',
         contourCount: contours.length
     });
@@ -227,7 +227,7 @@ export function traceEdges(edgeMap, options = {}) {
         simplifyTolerance = 2
     } = options;
     
-    EventBus.emit('PATH_PLANNING_STARTED', {
+    eventBus.emit('PATH_PLANNING_STARTED', {
         algorithm: 'edge-tracing',
         imageSize: `${edgeMap.width}x${edgeMap.height}`
     });
@@ -235,7 +235,7 @@ export function traceEdges(edgeMap, options = {}) {
     // Find all contours
     const contours = findEdgeContours(edgeMap, threshold);
     
-    EventBus.emit('PATH_PLANNING_PROGRESS', {
+    eventBus.emit('PATH_PLANNING_PROGRESS', {
         progress: 0.5,
         message: 'Simplifying contours...'
     });
@@ -265,13 +265,13 @@ export function traceEdges(edgeMap, options = {}) {
         
         // Emit progress
         if (i % 100 === 0) {
-            EventBus.emit('PATH_PLANNING_PROGRESS', {
+            eventBus.emit('PATH_PLANNING_PROGRESS', {
                 progress: 0.5 + (i / contours.length) * 0.5
             });
         }
     }
     
-    EventBus.emit('PATH_PLANNING_COMPLETE', {
+    eventBus.emit('PATH_PLANNING_COMPLETE', {
         algorithm: 'edge-tracing',
         polylineCount: polylines.length,
         originalContours: contours.length
@@ -296,7 +296,7 @@ export function optimizeContourOrder(polylines, startPos = { x: 0, y: 0 }) {
         }];
     }
     
-    EventBus.emit('PATH_PLANNING_STARTED', {
+    eventBus.emit('PATH_PLANNING_STARTED', {
         algorithm: 'contour-optimization',
         polylineCount: polylines.length
     });
@@ -349,13 +349,13 @@ export function optimizeContourOrder(polylines, startPos = { x: 0, y: 0 }) {
         
         // Emit progress periodically
         if (ordered.length % 50 === 0) {
-            EventBus.emit('PATH_PLANNING_PROGRESS', {
+            eventBus.emit('PATH_PLANNING_PROGRESS', {
                 progress: ordered.length / polylines.length
             });
         }
     }
     
-    EventBus.emit('PATH_PLANNING_COMPLETE', {
+    eventBus.emit('PATH_PLANNING_COMPLETE', {
         algorithm: 'contour-optimization',
         polylineCount: ordered.length
     });

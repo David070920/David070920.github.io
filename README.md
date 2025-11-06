@@ -6,11 +6,49 @@ A sophisticated web-based application for converting digital images into G-code 
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 ![Status](https://img.shields.io/badge/status-production--ready-brightgreen.svg)
 
+---
+
+## ⚠️ IMPORTANT: Server Required!
+
+**This application CANNOT be run by simply double-clicking [`index.html`](index.html:1)!**
+
+The app uses ES6 modules which require a web server. If you try to open the file directly, you'll see errors and the app won't work.
+
+### ✅ Quick Solution (Windows):
+**Just double-click [`start-server.bat`](start-server.bat:1)** - that's it!
+
+**Need help?** See [QUICK-START.md](QUICK-START.md:1) for a simple step-by-step guide.
+
+---
+
+## 🚀 Quick Start
+
+**Want to use this right now?** You have two options:
+
+### Option 1: Run Locally (30 seconds) ⭐ EASIEST
+
+1. **Download this project** to your computer
+2. **Double-click [`start-server.bat`](start-server.bat:1)** (Windows)
+3. **Browser opens automatically** - Start creating G-code! ✨
+
+**Requirements**: Python (usually pre-installed on Windows 10/11)
+- Don't have Python? Get it from [python.org](https://www.python.org/downloads/)
+- See [QUICK-START.md](QUICK-START.md:1) for detailed instructions
+
+### Option 2: Deploy Online (5 minutes)
+Host it on GitHub Pages for free - accessible from anywhere!
+
+📖 **[Full Deployment Guide](DEPLOYMENT.md)** - Step-by-step instructions for both methods
+
+---
+
 ## 📋 Table of Contents
 
+- [Quick Start](#quick-start)
 - [Overview](#overview)
 - [Features](#features)
-- [Getting Started](#getting-started)
+- [Running Locally](#running-locally)
+- [GitHub Pages Deployment](#github-pages-deployment)
 - [User Guide](#user-guide)
 - [Painting Modes](#painting-modes)
 - [Configuration Options](#configuration-options)
@@ -57,32 +95,81 @@ MuralBot G-Code Generator is a complete solution for robotic mural painting. It 
 - **Travel Distance**: Total robot movement distance
 - **Refill Count**: Number of required paint refills
 
-## 🚀 Getting Started
+## 🚀 Running Locally
 
-### Installation
+**⚠️ Important**: This application uses ES6 modules and **requires a web server**. You cannot just double-click [`index.html`](index.html:1).
 
-1. **Clone or Download** the repository:
-```bash
-git clone https://github.com/yourusername/muralbot-gcode-generator.git
-cd muralbot-gcode-generator
+### Method 1: Using the Start Script (Easiest) ⭐ RECOMMENDED
+
+**For Windows users:**
+
+1. **Download the project** to your computer
+2. **Double-click [`start-server.bat`](start-server.bat:1)**
+3. Browser opens automatically at `http://localhost:8000` - ready to use! ✅
+4. **Keep the command window open** while using the app
+5. Press `Ctrl+C` in the window when done
+
+**Alternative**: Double-click [`start-server.ps1`](start-server.ps1:1) for PowerShell version
+
+**Don't have Python?**
+- Download from [python.org](https://www.python.org/downloads/)
+- Make sure to check "Add Python to PATH" during installation
+- See [QUICK-START.md](QUICK-START.md:1) for detailed help
+
+### Method 2: Using a Local Web Server Manually
+
+#### Using Python (Windows 10/11 built-in):
+```cmd
+cd path\to\muralbot-gcode-generator
+python -m http.server 8000
 ```
+Then open: `http://localhost:8000`
 
-2. **Open in Browser**:
-   - Simply open `index.html` in a modern web browser
-   - No build process or dependencies required
-   - All code runs client-side in the browser
-
-3. **Start Using**:
-   - Upload an image
-   - Configure settings
-   - Generate G-code
-   - Download for your robot
+#### Using VS Code Live Server:
+1. Install [VS Code](https://code.visualstudio.com/)
+2. Install "Live Server" extension
+3. Right-click [`index.html`](index.html:1) → "Open with Live Server"
 
 ### Quick Start (3 Steps)
 
-1. **Upload Image**: Click "📁 Upload Image" and select your artwork
-2. **Configure Settings**: Adjust canvas size, colors, and painting mode
-3. **Generate**: Click "⚡ Generate G-Code" and download the result
+1. **Start Server**: Double-click [`start-server.bat`](start-server.bat:1) or use one of the methods above
+2. **Upload Image**: Click "📁 Upload Image" and select your artwork
+3. **Configure Settings**: Adjust canvas size, colors, and painting mode
+4. **Generate**: Click "⚡ Generate G-Code" and download the result
+
+📖 **[Simple Guide](QUICK-START.md)** - Non-technical step-by-step instructions
+📖 **[Complete Deployment Guide](DEPLOYMENT.md)** - Detailed options and troubleshooting
+
+---
+
+## 🌐 GitHub Pages Deployment
+
+Deploy your own copy online - **free and easy!**
+
+### Quick Deployment Steps:
+
+1. **Fork/Clone** this repository to your GitHub account
+2. **Enable GitHub Pages** in repository Settings → Pages
+3. **Select branch**: `main` and folder: `/ (root)`
+4. **Access your site** at: `https://YOUR_USERNAME.github.io/muralbot-gcode-generator/`
+
+That's it! Your app is now live and shareable. 🎉
+
+### Benefits:
+- ✅ No server costs
+- ✅ Accessible from anywhere
+- ✅ Share with others via URL
+- ✅ Automatic HTTPS
+- ✅ Updates deploy automatically when you push changes
+
+📖 **[Full Deployment Guide](DEPLOYMENT.md)** - Detailed step-by-step instructions with screenshots and troubleshooting
+
+### Alternative Hosting Options:
+- **Netlify**: Drag-and-drop deployment
+- **Vercel**: Fast deployment with CLI
+- **Cloudflare Pages**: Free CDN with unlimited bandwidth
+
+See [`DEPLOYMENT.md`](DEPLOYMENT.md) for complete instructions on all deployment methods.
 
 ## 📖 User Guide
 

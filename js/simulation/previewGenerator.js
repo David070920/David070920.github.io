@@ -3,7 +3,7 @@
  * Integrates renderer, simulator, and animation controller
  */
 
-import { EventBus } from '../core/eventBus.js';
+import eventBus from '../core/eventBus.js';
 import { SimulationRenderer } from './simulationRenderer.js';
 import { GCodeSimulator } from './gcodeSimulator.js';
 import { AnimationController } from './animationController.js';
@@ -37,7 +37,7 @@ export class PreviewGenerator {
         this.renderer = new SimulationRenderer(canvas);
         this.simulator = null;
         this.animationController = null;
-        this.eventBus = EventBus.getInstance();
+        this.eventBus = eventBus;
     }
 
     /**
