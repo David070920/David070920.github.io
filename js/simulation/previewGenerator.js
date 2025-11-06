@@ -174,10 +174,33 @@ export class PreviewGenerator {
      * @param {Object} config - Configuration object
      */
     async renderLayer(layer, config) {
-        if (!layer || !layer.paths || layer.paths.length === 0) {
+        console.log('🎨 [PreviewGenerator] renderLayer called with:', {
+            hasColor: !!layer.color,
+            hasImageData: !!layer.imageData,
+            hasPaths: !!layer.paths,
+            layerKeys: Object.keys(layer)
+        });
+
+        // Handle both path-based and imageData-based layers
+        if (layer.paths && layer.paths.length > 0) {
+            // Path-based rendering (for animated preview from G-code)
+            await this.renderPathBasedLayer(layer, config);
+        } else if (layer.imageData) {
+            // ImageData-based rendering (for instant preview from color separation)
+            await this.renderImageDataLayer(layer, config);
+        } else {
+            console.warn('⚠️ [PreviewGenerator] Layer has neither paths nor imageData');
             return;
         }
+    }
 
+    /**
+     * Render a layer from path data
+     * @private
+     * @param {Object} layer - Color layer with paths
+     * @param {Object} config - Configuration object
+     */
+    async renderPathBasedLayer(layer, config) {
         const nozzleSize = this.getNozzleSizeInPixels(config);
         const nozzleShape = config.nozzleShape || 'circular';
         const color = layer.color || '#000000';
@@ -196,6 +219,87 @@ export class PreviewGenerator {
             // Render as polyline
             this.renderer.renderPolyline(pixelPath, color, nozzleSize, nozzleShape);
         }
+    }
+
+    /**
+     * Render a layer from ImageData
+     * @private
+     * @param {Object} layer - Color layer with imageData
+     * @param {Object} config - Configuration object
+     */
+    async renderImageDataLayer(layer, config) {
+        const { imageData, color } = layer;
+        
+        if (!imageData || !imageData.data) {
+            console.warn('⚠️ [PreviewGenerator] Invalid imageData in layer');
+            return;
+        }
+
+        console.log(`🎨 [PreviewGenerator] Rendering imageData layer: ${imageData.width}x${imageData.height}`);
+
+        const nozzleSize = this.getNozzleSizeInPixels(config);
+        const nozzleShape = config.nozzleShape || 'circular';
+        
+        // Convert RGB color to hex string
+        const hexColor = this.rgbToHex(color);
+        
+        console.log(`🎨 [PreviewGenerator] Color: RGB(${color.r}, ${color.g}, ${color.b}) -> ${hexColor}`);
+
+        const width = imageData.width;
+        const height = imageData.height;
+        const data = imageData.data;
+
+        // Extract pixel coordinates from imageData (similar to gcodeGenerator)
+        const pixels = [];
+        for (let y = 0; y < height; y++) {
+            for (let x = 0; x < width; x++) {
+                const idx = (y * width + x) * 4;
+                const alpha = data[idx + 3];
+                
+                // Include pixel if it's opaque
+                if (alpha > 0) {
+                    pixels.push({ x, y });
+                }
+            }
+        }
+
+        console.log(`✅ [PreviewGenerator] Extracted ${pixels.length} pixels to render`);
+
+        if (pixels.length === 0) {
+            console.warn('⚠️ [PreviewGenerator] No pixels to render in this layer');
+            return;
+        }
+
+        // Render each pixel as a dot
+        for (const pixel of pixels) {
+            // Scale pixel coordinates to canvas coordinates
+            const canvasX = (pixel.x / width) * this.canvas.width;
+            const canvasY = (pixel.y / height) * this.canvas.height;
+
+            // Render the dot (x, y, color, size, shape)
+            this.renderer.renderDot(
+                canvasX,
+                canvasY,
+                hexColor,
+                nozzleSize,
+                nozzleShape
+            );
+        }
+
+        console.log(`✅ [PreviewGenerator] Rendered ${pixels.length} dots for layer`);
+    }
+
+    /**
+     * Convert RGB color object to hex string
+     * @private
+     * @param {Object} color - RGB color {r, g, b}
+     * @returns {string} Hex color string
+     */
+    rgbToHex(color) {
+        const r = Math.round(color.r).toString(16).padStart(2, '0');
+        const g = Math.round(color.g).toString(16).padStart(2, '0');
+        const b = Math.round(color.b).toString(16).padStart(2, '0');
+        return `#${r}${g}${b}`;
     }
 
     /**
